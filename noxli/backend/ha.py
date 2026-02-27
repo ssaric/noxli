@@ -1,11 +1,9 @@
 """Home Assistant Supervisor API client for stream source discovery."""
 
-import logging
+import json
 import os
 
 import httpx
-
-logger = logging.getLogger(__name__)
 
 SUPERVISOR_URL = "http://supervisor/core/api"
 SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
@@ -15,6 +13,10 @@ STREAM_DOMAINS = ("camera.", "media_player.")
 
 # Attributes that may contain a stream URL
 STREAM_ATTRS = ("stream_source", "rtsp_url", "media_content_id", "url")
+
+
+def _log(msg: str) -> None:
+    print(f"[noxli] {msg}", flush=True)
 
 
 def _headers() -> dict[str, str]:
@@ -40,7 +42,6 @@ async def get_stream_entities() -> list[dict]:
             if not any(eid.startswith(d) for d in STREAM_DOMAINS):
                 continue
             attrs = s.get("attributes", {})
-            # Check if entity has any stream-related attribute
             has_stream = any(attrs.get(a) for a in STREAM_ATTRS)
             results.append({
                 "entity_id": eid,
@@ -52,6 +53,23 @@ async def get_stream_entities() -> list[dict]:
         return results
     except Exception:
         return []
+
+
+async def _try_expose_integration(entity_id: str) -> str | None:
+    """Try hass-expose-camera-stream-source custom integration."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{SUPERVISOR_URL}/camera_stream_source/{entity_id}",
+                headers=_headers(),
+            )
+            if resp.status_code == 200:
+                url = resp.text.strip()
+                if url:
+                    return url
+        return None
+    except Exception:
+        return None
 
 
 async def _try_go2rtc(entity_id: str) -> str | None:
@@ -75,20 +93,61 @@ async def _try_go2rtc(entity_id: str) -> str | None:
             if url.startswith(("rtsp://", "rtsps://")):
                 return url
 
-        # Fall back to any producer URL
         if producers:
             return producers[0].get("url")
 
         return None
+    except Exception:
+        return None
+
+
+async def _try_ws_stream(entity_id: str) -> str | None:
+    """Request an HLS stream URL via the HA WebSocket API."""
+    try:
+        import websockets  # shipped with uvicorn[standard]
+    except ImportError:
+        _log("websockets library not available, skipping WS method")
+        return None
+
+    try:
+        async with websockets.connect("ws://supervisor/core/websocket") as ws:
+            # auth handshake
+            msg = json.loads(await ws.recv())
+            if msg.get("type") != "auth_required":
+                return None
+
+            await ws.send(json.dumps({
+                "type": "auth",
+                "access_token": SUPERVISOR_TOKEN,
+            }))
+            msg = json.loads(await ws.recv())
+            if msg.get("type") != "auth_ok":
+                return None
+
+            # request camera stream
+            await ws.send(json.dumps({
+                "id": 1,
+                "type": "camera/stream",
+                "entity_id": entity_id,
+                "format": "hls",
+            }))
+            msg = json.loads(await ws.recv())
+
+            if msg.get("success"):
+                hls_path = msg.get("result", {}).get("url", "")
+                if hls_path:
+                    return f"http://supervisor/core{hls_path}"
+
+        return None
     except Exception as exc:
-        logger.debug("go2rtc API not available: %s", exc)
+        _log(f"WebSocket camera/stream failed for {entity_id}: {exc}")
         return None
 
 
 async def get_stream_source(entity_id: str) -> str | None:
-    """Resolve a stream URL from entity attributes, then go2rtc."""
+    """Try every available method to resolve a stream URL."""
 
-    # 1 — check entity state attributes
+    # 1 — entity state attributes
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -102,21 +161,31 @@ async def get_stream_source(entity_id: str) -> str | None:
             for attr in STREAM_ATTRS:
                 val = attrs.get(attr)
                 if val and isinstance(val, str):
-                    logger.info("Found stream URL in attribute '%s' for %s", attr, entity_id)
+                    _log(f"Resolved {entity_id} via attribute '{attr}'")
                     return val
 
-            logger.info(
-                "No stream URL in attributes for %s (attrs: %s)",
-                entity_id,
-                list(attrs.keys()),
-            )
+            _log(f"No stream URL in attributes for {entity_id} "
+                 f"(keys: {list(attrs.keys())})")
     except Exception as exc:
-        logger.warning("Failed to fetch state for %s: %s", entity_id, exc)
+        _log(f"Failed to fetch state for {entity_id}: {exc}")
 
-    # 2 — try go2rtc
-    url = await _try_go2rtc(entity_id)
+    # 2 — expose-camera-stream-source custom integration
+    url = await _try_expose_integration(entity_id)
     if url:
-        logger.info("Resolved stream URL via go2rtc for %s", entity_id)
+        _log(f"Resolved {entity_id} via expose-camera-stream-source")
         return url
 
+    # 3 — go2rtc
+    url = await _try_go2rtc(entity_id)
+    if url:
+        _log(f"Resolved {entity_id} via go2rtc")
+        return url
+
+    # 4 — WebSocket camera/stream (returns HLS URL)
+    url = await _try_ws_stream(entity_id)
+    if url:
+        _log(f"Resolved {entity_id} via WebSocket HLS stream")
+        return url
+
+    _log(f"All resolution methods failed for {entity_id}")
     return None
