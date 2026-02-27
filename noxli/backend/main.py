@@ -72,7 +72,12 @@ async def resolve_stream_source(entity_id: str):
     if not rtsp_url:
         raise HTTPException(
             status_code=404,
-            detail=f"Could not resolve stream source for {entity_id}",
+            detail=(
+                f"Could not resolve stream source for {entity_id}. "
+                "The RTSP URL is not exposed in entity attributes and "
+                "go2rtc did not return a source. "
+                "Please enter the RTSP URL manually below."
+            ),
         )
 
     # Persist the selection

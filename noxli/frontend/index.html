@@ -433,7 +433,13 @@ async function confirmSelection() {
     document.getElementById('selUrl').textContent = data.rtsp_url;
     setStatus('Stream configured: ' + data.rtsp_url, 'success');
   } catch (e) {
-    setStatus('Could not resolve stream URL: ' + e.message + ' — try manual entry', 'error');
+    setStatus('Could not resolve stream URL — enter the RTSP URL manually below', 'error');
+    // Auto-open manual section
+    const mb = document.getElementById('manualBody');
+    if (!mb.classList.contains('open')) {
+      mb.classList.add('open');
+      document.getElementById('manualArrow').innerHTML = '&#9660;';
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = 'Confirm Selection';

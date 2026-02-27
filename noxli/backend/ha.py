@@ -1,8 +1,11 @@
 """Home Assistant Supervisor API client for stream source discovery."""
 
+import logging
 import os
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 SUPERVISOR_URL = "http://supervisor/core/api"
 SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
@@ -51,8 +54,41 @@ async def get_stream_entities() -> list[dict]:
         return []
 
 
+async def _try_go2rtc(entity_id: str) -> str | None:
+    """Try to resolve a stream URL via go2rtc's REST API."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{SUPERVISOR_URL}/go2rtc/api/streams",
+                headers=_headers(),
+            )
+            resp.raise_for_status()
+            streams = resp.json()
+
+        stream = streams.get(entity_id)
+        if not stream:
+            return None
+
+        producers = stream.get("producers", [])
+        for p in producers:
+            url = p.get("url", "")
+            if url.startswith(("rtsp://", "rtsps://")):
+                return url
+
+        # Fall back to any producer URL
+        if producers:
+            return producers[0].get("url")
+
+        return None
+    except Exception as exc:
+        logger.debug("go2rtc API not available: %s", exc)
+        return None
+
+
 async def get_stream_source(entity_id: str) -> str | None:
-    """Resolve a stream URL from an entity's attributes."""
+    """Resolve a stream URL from entity attributes, then go2rtc."""
+
+    # 1 — check entity state attributes
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -62,10 +98,25 @@ async def get_stream_source(entity_id: str) -> str | None:
             resp.raise_for_status()
             state = resp.json()
             attrs = state.get("attributes", {})
+
             for attr in STREAM_ATTRS:
                 val = attrs.get(attr)
                 if val and isinstance(val, str):
+                    logger.info("Found stream URL in attribute '%s' for %s", attr, entity_id)
                     return val
-            return None
-    except Exception:
-        return None
+
+            logger.info(
+                "No stream URL in attributes for %s (attrs: %s)",
+                entity_id,
+                list(attrs.keys()),
+            )
+    except Exception as exc:
+        logger.warning("Failed to fetch state for %s: %s", entity_id, exc)
+
+    # 2 — try go2rtc
+    url = await _try_go2rtc(entity_id)
+    if url:
+        logger.info("Resolved stream URL via go2rtc for %s", entity_id)
+        return url
+
+    return None
