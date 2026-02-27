@@ -1,11 +1,5 @@
 #!/usr/bin/with-contenv bashio
 
-# Read addon options
-export RTSP_URL=$(bashio::config 'rtsp_url')
-export DETECTION_SENSITIVITY=$(bashio::config 'detection_sensitivity')
-export MQTT_TOPIC=$(bashio::config 'mqtt_topic')
-export LOG_LEVEL=$(bashio::config 'log_level')
-
 # Discover MQTT broker from Supervisor
 if bashio::services "mqtt"; then
     export MQTT_HOST=$(bashio::services mqtt "host")

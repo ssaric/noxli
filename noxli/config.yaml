@@ -21,14 +21,4 @@ services:
 map:
   - type: share
     read_only: false
-options:
-  rtsp_url: ""
-  detection_sensitivity: 0.5
-  mqtt_topic: "noxli/detection"
-  log_level: "info"
-schema:
-  rtsp_url: url?
-  detection_sensitivity: "float(0.1,1.0)"
-  mqtt_topic: str
-  log_level: list(debug|info|warning|error)
 watchdog: "http://[HOST]:[PORT:8099]/api/health"

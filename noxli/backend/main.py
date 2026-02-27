@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -15,16 +16,22 @@ app = FastAPI()
 CONFIG_PATH = Path("/data/config.json")
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
+CONFIG_DEFAULTS: dict = {
+    "rtsp_url": "",
+    "detection_sensitivity": 0.5,
+    "mqtt_topic": "noxli/detection",
+    "log_level": "info",
+}
+
 
 def _read_config() -> dict:
+    persisted: dict = {}
     if CONFIG_PATH.exists():
         try:
-            return json.loads(CONFIG_PATH.read_text())
+            persisted = json.loads(CONFIG_PATH.read_text())
         except (json.JSONDecodeError, OSError):
             pass
-    # Fall back to environment variable from addon options
-    rtsp_url = os.environ.get("RTSP_URL", "")
-    return {"rtsp_url": rtsp_url} if rtsp_url else {}
+    return {**CONFIG_DEFAULTS, **persisted}
 
 
 def _write_config(data: dict) -> None:
@@ -83,13 +90,18 @@ async def get_config():
 
 
 class ConfigUpdate(BaseModel):
-    rtsp_url: str
+    rtsp_url: Optional[str] = None
+    detection_sensitivity: Optional[float] = None
+    mqtt_topic: Optional[str] = None
+    log_level: Optional[str] = None
 
 
 @app.post("/api/config")
 async def set_config(body: ConfigUpdate):
     config = _read_config()
-    config["rtsp_url"] = body.rtsp_url
-    config.pop("entity_id", None)
+    updates = body.model_dump(exclude_none=True)
+    if "rtsp_url" in updates:
+        config.pop("entity_id", None)
+    config.update(updates)
     _write_config(config)
-    return {"rtsp_url": body.rtsp_url}
+    return JSONResponse(config)

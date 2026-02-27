@@ -175,6 +175,78 @@
     }
     .manual-body input::placeholder { color: #666; }
     .manual-body input:focus { outline: none; border-color: var(--accent); }
+
+    /* Settings section */
+    .settings-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .settings-toggle {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: none;
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .settings-toggle:hover { background: var(--surface-hover); }
+    .settings-body {
+      padding: 16px;
+      display: none;
+      background: var(--bg);
+    }
+    .settings-body.open { display: block; }
+    .settings-field {
+      margin-bottom: 16px;
+    }
+    .settings-field label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .settings-field input[type="text"],
+    .settings-field select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+    }
+    .settings-field input[type="text"]:focus,
+    .settings-field select:focus { outline: none; border-color: var(--accent); }
+    .settings-field select { cursor: pointer; }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .slider-value {
+      font-family: monospace;
+      font-size: 0.85rem;
+      min-width: 2.5em;
+      text-align: right;
+      color: var(--accent);
+    }
+    .settings-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -222,6 +294,38 @@
       <div class="input-row">
         <input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.x:554/stream">
         <button onclick="saveManualUrl()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <button class="settings-toggle" onclick="toggleSettings()">
+      <span>Settings</span>
+      <span id="settingsArrow">&#9654;</span>
+    </button>
+    <div id="settingsBody" class="settings-body">
+      <div class="settings-field">
+        <label>Detection Sensitivity</label>
+        <div class="slider-row">
+          <input id="settingSensitivity" type="range" min="0.1" max="1.0" step="0.1" value="0.5">
+          <span id="sensitivityValue" class="slider-value">0.5</span>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>MQTT Topic</label>
+        <input id="settingMqttTopic" type="text" placeholder="noxli/detection">
+      </div>
+      <div class="settings-field">
+        <label>Log Level</label>
+        <select id="settingLogLevel">
+          <option value="debug">debug</option>
+          <option value="info" selected>info</option>
+          <option value="warning">warning</option>
+          <option value="error">error</option>
+        </select>
+      </div>
+      <div class="settings-actions">
+        <button class="primary" onclick="saveSettings()">Save Settings</button>
       </div>
     </div>
   </div>
@@ -362,6 +466,37 @@ async function saveManualUrl() {
   }
 }
 
+function toggleSettings() {
+  const body = document.getElementById('settingsBody');
+  const arrow = document.getElementById('settingsArrow');
+  const open = body.classList.toggle('open');
+  arrow.innerHTML = open ? '&#9660;' : '&#9654;';
+}
+
+document.getElementById('settingSensitivity').addEventListener('input', function() {
+  document.getElementById('sensitivityValue').textContent = this.value;
+});
+
+async function saveSettings() {
+  const payload = {
+    detection_sensitivity: parseFloat(document.getElementById('settingSensitivity').value),
+    mqtt_topic: document.getElementById('settingMqttTopic').value.trim(),
+    log_level: document.getElementById('settingLogLevel').value
+  };
+  setStatus('Saving settings...', 'loading');
+  try {
+    const resp = await api('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setStatus('Settings saved', 'success');
+  } catch (e) {
+    setStatus('Failed to save settings: ' + e.message, 'error');
+  }
+}
+
 async function loadCurrentConfig() {
   try {
     const resp = await api('/api/config');
@@ -375,6 +510,17 @@ async function loadCurrentConfig() {
       document.getElementById('selEntity').textContent = cfg.entity_id;
       document.getElementById('selUrl').textContent = cfg.rtsp_url || '—';
       document.getElementById('selectedInfo').classList.add('visible');
+    }
+    // Populate settings fields
+    if (cfg.detection_sensitivity != null) {
+      document.getElementById('settingSensitivity').value = cfg.detection_sensitivity;
+      document.getElementById('sensitivityValue').textContent = cfg.detection_sensitivity;
+    }
+    if (cfg.mqtt_topic != null) {
+      document.getElementById('settingMqttTopic').value = cfg.mqtt_topic;
+    }
+    if (cfg.log_level) {
+      document.getElementById('settingLogLevel').value = cfg.log_level;
     }
   } catch (e) { /* ignore */ }
 }
