@@ -4,7 +4,7 @@ slug: noxli
 description: >-
   Baby cry detector using YAMNet with RTSP stream analysis,
   sleep event logging, and MQTT integration.
-url: "https://github.com/forsythe/noxli"
+url: "https://github.com/ssaric/noxli"
 arch:
   - amd64
   - aarch64
