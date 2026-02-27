@@ -1,0 +1,95 @@
+"""Noxli ingress backend — stream discovery & config persistence."""
+
+import json
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
+
+from . import ha
+
+app = FastAPI()
+
+CONFIG_PATH = Path("/data/config.json")
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+
+def _read_config() -> dict:
+    if CONFIG_PATH.exists():
+        try:
+            return json.loads(CONFIG_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    # Fall back to environment variable from addon options
+    rtsp_url = os.environ.get("RTSP_URL", "")
+    return {"rtsp_url": rtsp_url} if rtsp_url else {}
+
+
+def _write_config(data: dict) -> None:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(data, indent=2))
+
+
+# --- Routes ---
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    html_path = FRONTEND_DIR / "index.html"
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail="Frontend not found")
+
+    html = html_path.read_text()
+    ingress_entry = os.environ.get("INGRESS_ENTRY", "")
+    inject = f'<script>window.INGRESS_ENTRY="{ingress_entry}";</script>'
+    html = html.replace("</head>", f"{inject}</head>")
+    return HTMLResponse(html)
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/api/cameras")
+async def list_cameras():
+    cameras = await ha.get_stream_entities()
+    return {"cameras": cameras}
+
+
+@app.post("/api/cameras/{entity_id:path}/stream_source")
+async def resolve_stream_source(entity_id: str):
+    rtsp_url = await ha.get_stream_source(entity_id)
+    if not rtsp_url:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not resolve stream source for {entity_id}",
+        )
+
+    # Persist the selection
+    config = _read_config()
+    config["entity_id"] = entity_id
+    config["rtsp_url"] = rtsp_url
+    _write_config(config)
+
+    return {"entity_id": entity_id, "rtsp_url": rtsp_url}
+
+
+@app.get("/api/config")
+async def get_config():
+    return JSONResponse(_read_config())
+
+
+class ConfigUpdate(BaseModel):
+    rtsp_url: str
+
+
+@app.post("/api/config")
+async def set_config(body: ConfigUpdate):
+    config = _read_config()
+    config["rtsp_url"] = body.rtsp_url
+    config.pop("entity_id", None)
+    _write_config(config)
+    return {"rtsp_url": body.rtsp_url}

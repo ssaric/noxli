@@ -17,7 +17,12 @@ RUN pip3 install --no-cache-dir --break-system-packages \
     soundfile \
     paho-mqtt \
     fastapi \
-    "uvicorn[standard]"
+    "uvicorn[standard]" \
+    httpx
+
+# Copy application code
+COPY backend/ /backend/
+COPY frontend/ /frontend/
 
 # Copy rootfs overlay
 COPY rootfs /

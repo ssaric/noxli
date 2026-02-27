@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noxli — Stream Setup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #1c1c1c;
+      --surface: #262626;
+      --surface-hover: #2f2f2f;
+      --border: #3a3a3a;
+      --text: #e1e1e1;
+      --text-dim: #999;
+      --accent: #4fc3f7;
+      --accent-hover: #81d4fa;
+      --success: #66bb6a;
+      --error: #ef5350;
+      --warning: #ffa726;
+      --radius: 8px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .header svg { flex-shrink: 0; }
+    .header h1 { font-size: 1.4rem; font-weight: 600; }
+    .header p { color: var(--text-dim); font-size: 0.85rem; margin-top: 2px; }
+
+    /* Status bar */
+    .status {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .status.loading { display: block; background: var(--surface); color: var(--accent); border: 1px solid var(--border); }
+    .status.success { display: block; background: #1b3a1b; color: var(--success); border: 1px solid #2d5a2d; }
+    .status.error   { display: block; background: #3a1b1b; color: var(--error); border: 1px solid #5a2d2d; }
+
+    /* Camera grid */
+    .camera-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .camera-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .camera-card:hover { background: var(--surface-hover); border-color: #555; }
+    .camera-card.selected { border-color: var(--accent); background: #1a2a35; }
+    .camera-card .name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .camera-card .entity-id { color: var(--text-dim); font-size: 0.8rem; font-family: monospace; }
+    .camera-card .state-badge {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .state-badge.idle      { background: #2d5a2d; color: var(--success); }
+    .state-badge.streaming { background: #1a3a5a; color: var(--accent); }
+    .state-badge.recording { background: #5a3a1a; color: var(--warning); }
+    .state-badge.unknown   { background: #3a3a3a; color: var(--text-dim); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--text-dim);
+    }
+    .empty p { margin-top: 8px; font-size: 0.9rem; }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+    button:hover { background: var(--surface-hover); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary {
+      background: var(--accent);
+      color: #111;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    button.primary:hover { background: var(--accent-hover); }
+
+    /* Selected info panel */
+    .selected-info {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 24px;
+      display: none;
+    }
+    .selected-info.visible { display: block; }
+    .selected-info h3 { font-size: 0.9rem; margin-bottom: 10px; color: var(--accent); }
+    .selected-info .field { margin-bottom: 6px; font-size: 0.85rem; }
+    .selected-info .label { color: var(--text-dim); }
+    .selected-info .value { font-family: monospace; color: var(--text); word-break: break-all; }
+
+    /* Manual URL section */
+    .manual-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .manual-toggle {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: none;
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .manual-toggle:hover { background: var(--surface-hover); }
+    .manual-body {
+      padding: 16px;
+      display: none;
+      background: var(--bg);
+    }
+    .manual-body.open { display: block; }
+    .manual-body .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .manual-body input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    .manual-body input::placeholder { color: #666; }
+    .manual-body input:focus { outline: none; border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <div>
+      <h1>Noxli — Stream Setup</h1>
+      <p>Select an audio stream source from Home Assistant or enter a URL manually</p>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="actions">
+    <button onclick="loadCameras()">Refresh Sources</button>
+    <button id="confirmBtn" class="primary" disabled onclick="confirmSelection()">Confirm Selection</button>
+  </div>
+
+  <div id="cameraGrid" class="camera-grid"></div>
+  <div id="emptyState" class="empty" style="display:none">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+    <p>No stream sources found in Home Assistant</p>
+  </div>
+
+  <div id="selectedInfo" class="selected-info">
+    <h3>Selected Source</h3>
+    <div class="field"><span class="label">Entity: </span><span id="selEntity" class="value"></span></div>
+    <div class="field"><span class="label">Stream URL: </span><span id="selUrl" class="value">—</span></div>
+  </div>
+
+  <div class="manual-section">
+    <button class="manual-toggle" onclick="toggleManual()">
+      <span>Manual Stream URL</span>
+      <span id="manualArrow">&#9654;</span>
+    </button>
+    <div id="manualBody" class="manual-body">
+      <div class="input-row">
+        <input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.x:554/stream">
+        <button onclick="saveManualUrl()">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const BASE = (window.INGRESS_ENTRY || '').replace(/\/$/, '');
+let selectedEntity = null;
+
+function api(path, opts) {
+  return fetch(BASE + path, opts);
+}
+
+function setStatus(text, type) {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = 'status ' + type;
+}
+
+function clearStatus() {
+  document.getElementById('status').className = 'status';
+}
+
+function stateBadgeClass(state) {
+  if (state === 'idle') return 'idle';
+  if (state === 'streaming') return 'streaming';
+  if (state === 'recording') return 'recording';
+  return 'unknown';
+}
+
+async function loadCameras() {
+  setStatus('Discovering stream sources...', 'loading');
+  try {
+    const resp = await api('/api/cameras');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    renderCameras(data.cameras || []);
+    if (data.cameras && data.cameras.length > 0) {
+      clearStatus();
+    } else {
+      setStatus('No stream sources found — add a camera or media player in HA, or use manual URL below', 'loading');
+    }
+  } catch (e) {
+    setStatus('Failed to discover sources: ' + e.message, 'error');
+    renderCameras([]);
+  }
+}
+
+function renderCameras(cameras) {
+  const grid = document.getElementById('cameraGrid');
+  const empty = document.getElementById('emptyState');
+
+  if (cameras.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = cameras.map(c => `
+    <div class="camera-card${c.entity_id === selectedEntity ? ' selected' : ''}"
+         onclick="selectCamera('${c.entity_id}')">
+      <div class="name">${esc(c.name)}</div>
+      <div class="entity-id">${esc(c.entity_id)}</div>
+      <span class="state-badge ${stateBadgeClass(c.state)}">${esc(c.state)}</span>
+      ${c.has_stream_url ? '<span class="state-badge streaming" style="margin-left:4px">has url</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function selectCamera(entityId) {
+  selectedEntity = entityId;
+  document.querySelectorAll('.camera-card').forEach(card => {
+    card.classList.toggle('selected', card.querySelector('.entity-id').textContent === entityId);
+  });
+  document.getElementById('confirmBtn').disabled = false;
+
+  const info = document.getElementById('selectedInfo');
+  info.classList.add('visible');
+  document.getElementById('selEntity').textContent = entityId;
+  document.getElementById('selUrl').textContent = '— click Confirm to resolve —';
+}
+
+async function confirmSelection() {
+  if (!selectedEntity) return;
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Resolving...';
+  setStatus('Resolving stream source for ' + selectedEntity + '...', 'loading');
+
+  try {
+    const resp = await api('/api/cameras/' + encodeURIComponent(selectedEntity) + '/stream_source', {
+      method: 'POST'
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || 'HTTP ' + resp.status);
+    }
+    const data = await resp.json();
+    document.getElementById('selUrl').textContent = data.rtsp_url;
+    setStatus('Stream configured: ' + data.rtsp_url, 'success');
+  } catch (e) {
+    setStatus('Could not resolve stream URL: ' + e.message + ' — try manual entry', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm Selection';
+  }
+}
+
+function toggleManual() {
+  const body = document.getElementById('manualBody');
+  const arrow = document.getElementById('manualArrow');
+  const open = body.classList.toggle('open');
+  arrow.innerHTML = open ? '&#9660;' : '&#9654;';
+}
+
+async function saveManualUrl() {
+  const input = document.getElementById('manualUrl');
+  const url = input.value.trim();
+  if (!url) return;
+
+  setStatus('Saving...', 'loading');
+  try {
+    const resp = await api('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rtsp_url: url })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setStatus('Manual RTSP URL saved: ' + url, 'success');
+  } catch (e) {
+    setStatus('Failed to save: ' + e.message, 'error');
+  }
+}
+
+async function loadCurrentConfig() {
+  try {
+    const resp = await api('/api/config');
+    if (!resp.ok) return;
+    const cfg = await resp.json();
+    if (cfg.rtsp_url) {
+      document.getElementById('manualUrl').value = cfg.rtsp_url;
+    }
+    if (cfg.entity_id) {
+      selectedEntity = cfg.entity_id;
+      document.getElementById('selEntity').textContent = cfg.entity_id;
+      document.getElementById('selUrl').textContent = cfg.rtsp_url || '—';
+      document.getElementById('selectedInfo').classList.add('visible');
+    }
+  } catch (e) { /* ignore */ }
+}
+
+// Init
+loadCurrentConfig();
+loadCameras();
+</script>
+</body>
+</html>
