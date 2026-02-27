@@ -247,6 +247,95 @@
       gap: 10px;
       margin-top: 4px;
     }
+
+    /* Timeline */
+    .timeline-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 12px;
+    }
+    .timeline-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .timeline-count {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .timeline-container { position: relative; }
+    .timeline-bar {
+      position: relative;
+      height: 32px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .timeline-now {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent);
+      z-index: 2;
+    }
+    .timeline-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--error);
+      opacity: 0.85;
+      border-radius: 1px;
+      cursor: pointer;
+      z-index: 1;
+      min-width: 3px;
+    }
+    .timeline-marker:hover {
+      opacity: 1;
+      z-index: 3;
+    }
+    .timeline-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      color: var(--text);
+      font-size: 0.75rem;
+      padding: 5px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+      border: 1px solid var(--border);
+    }
+    .timeline-marker:hover .timeline-tooltip { display: block; }
+    .timeline-labels {
+      position: relative;
+      height: 18px;
+      margin-top: 4px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+    .timeline-labels span {
+      position: absolute;
+      transform: translateX(-50%);
+    }
+    .timeline-empty {
+      text-align: center;
+      padding: 6px 0 0;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
   </style>
 </head>
 <body>
@@ -260,6 +349,20 @@
       <h1>Noxli — Stream Setup</h1>
       <p>Select an audio stream source from Home Assistant or enter a URL manually</p>
     </div>
+  </div>
+
+  <div id="timelineSection" class="timeline-section">
+    <div class="timeline-header">
+      <h2>Last 24 Hours</h2>
+      <span id="timelineCount" class="timeline-count"></span>
+    </div>
+    <div class="timeline-container">
+      <div id="timelineBar" class="timeline-bar">
+        <div class="timeline-now"></div>
+      </div>
+      <div id="timelineLabels" class="timeline-labels"></div>
+    </div>
+    <div id="timelineEmpty" class="timeline-empty" style="display:none">No events in the last 24 hours</div>
   </div>
 
   <div id="status" class="status"></div>
@@ -531,9 +634,75 @@ async function loadCurrentConfig() {
   } catch (e) { /* ignore */ }
 }
 
+// --- Timeline ---
+
+async function loadTimeline() {
+  try {
+    const resp = await api('/api/events?hours=24');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderTimeline(data.events || []);
+  } catch (e) { /* silent */ }
+}
+
+function renderTimeline(events) {
+  const bar = document.getElementById('timelineBar');
+  const labels = document.getElementById('timelineLabels');
+  const countEl = document.getElementById('timelineCount');
+  const emptyEl = document.getElementById('timelineEmpty');
+
+  // Remove old markers
+  bar.querySelectorAll('.timeline-marker').forEach(m => m.remove());
+  labels.innerHTML = '';
+
+  countEl.textContent = events.length === 1
+    ? '1 event' : events.length + ' events';
+  emptyEl.style.display = events.length === 0 ? 'block' : 'none';
+
+  const now = Date.now() / 1000;
+  const windowStart = now - 86400;
+
+  // Render markers
+  events.forEach(ev => {
+    const leftPct = (ev.timestamp - windowStart) / 86400 * 100;
+    const widthPct = Math.max(0.3, ev.duration / 86400 * 100);
+    if (leftPct < 0 || leftPct > 100) return;
+
+    const marker = document.createElement('div');
+    marker.className = 'timeline-marker';
+    marker.style.left = leftPct + '%';
+    marker.style.width = widthPct + '%';
+
+    const t = new Date(ev.timestamp * 1000);
+    const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const conf = Math.round(ev.confidence * 100);
+    const dur = ev.duration > 0 ? ev.duration.toFixed(0) + 's' : '—';
+
+    const tip = document.createElement('div');
+    tip.className = 'timeline-tooltip';
+    tip.textContent = timeStr + '  conf ' + conf + '%  dur ' + dur;
+    marker.appendChild(tip);
+    bar.appendChild(marker);
+  });
+
+  // Hour labels
+  const firstHour = Math.ceil(windowStart / 3600) * 3600;
+  for (let h = firstHour; h < now; h += 3600) {
+    const pct = (h - windowStart) / 86400 * 100;
+    if (pct < 2 || pct > 98) continue;
+    const lbl = document.createElement('span');
+    lbl.style.left = pct + '%';
+    const d = new Date(h * 1000);
+    lbl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    labels.appendChild(lbl);
+  }
+}
+
 // Init
 loadCurrentConfig();
 loadCameras();
+loadTimeline();
+setInterval(loadTimeline, 60000);
 </script>
 </body>
 </html>

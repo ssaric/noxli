@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Add 24-hour cry event timeline to ingress UI
+- SQLite event store for cry detection events
+- REST endpoints: GET /api/events, POST /api/events
+- Timeline auto-refreshes every 60 seconds
+- Event markers with hover tooltips showing time, confidence, and duration
+
 ## 0.2.1
 
 - Add multiple fallback methods for camera stream URL resolution

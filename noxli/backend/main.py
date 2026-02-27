@@ -2,14 +2,15 @@
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from . import ha
+from . import db, ha
 
 app = FastAPI()
 
@@ -110,3 +111,46 @@ async def set_config(body: ConfigUpdate):
     config.update(updates)
     _write_config(config)
     return JSONResponse(config)
+
+
+# --- Events ---
+
+
+class EventCreate(BaseModel):
+    timestamp: Optional[float] = None
+    duration: float = 0
+    confidence: float = 0
+    source: str = "test"
+
+
+@app.get("/api/events")
+async def list_events(hours: float = Query(default=24, ge=0.1, le=168)):
+    since = time.time() - hours * 3600
+    with db.get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, timestamp, duration, confidence, source, created_at "
+            "FROM events WHERE timestamp >= ? ORDER BY timestamp ASC",
+            (since,),
+        ).fetchall()
+    return {
+        "events": [dict(r) for r in rows],
+        "query": {"hours": hours, "since": since},
+    }
+
+
+@app.post("/api/events")
+async def create_event(body: EventCreate):
+    ts = body.timestamp if body.timestamp is not None else time.time()
+    with db.get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO events (timestamp, duration, confidence, source) "
+            "VALUES (?, ?, ?, ?)",
+            (ts, body.duration, body.confidence, body.source),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, timestamp, duration, confidence, source, created_at "
+            "FROM events WHERE id = ?",
+            (cur.lastrowid,),
+        ).fetchone()
+    return dict(row)
