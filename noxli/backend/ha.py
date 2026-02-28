@@ -72,8 +72,16 @@ async def _try_expose_integration(entity_id: str) -> str | None:
         return None
 
 
+GO2RTC_RTSP = "rtsp://homeassistant:8554"
+
+
 async def _try_go2rtc(entity_id: str) -> str | None:
-    """Try to resolve a stream URL via go2rtc's REST API."""
+    """Try to resolve a stream URL via go2rtc.
+
+    Prefer the camera's direct RTSP source if available.
+    Otherwise use go2rtc's RTSP proxy which includes audio
+    (unlike HA's HLS stream which is often video-only).
+    """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
@@ -83,21 +91,24 @@ async def _try_go2rtc(entity_id: str) -> str | None:
             resp.raise_for_status()
             streams = resp.json()
 
+        # If go2rtc knows about this camera, check for a direct RTSP source
         stream = streams.get(entity_id)
-        if not stream:
-            return None
+        if stream:
+            producers = stream.get("producers", [])
+            for p in producers:
+                url = p.get("url", "")
+                if url.startswith(("rtsp://", "rtsps://")):
+                    _log(f"go2rtc has direct RTSP source for {entity_id}")
+                    return url
 
-        producers = stream.get("producers", [])
-        for p in producers:
-            url = p.get("url", "")
-            if url.startswith(("rtsp://", "rtsps://")):
-                return url
+        # go2rtc is available — use its RTSP proxy (includes audio)
+        # go2rtc creates streams on-demand for HA camera entities
+        proxy_url = f"{GO2RTC_RTSP}/{entity_id}"
+        _log(f"Using go2rtc RTSP proxy: {proxy_url}")
+        return proxy_url
 
-        if producers:
-            return producers[0].get("url")
-
-        return None
-    except Exception:
+    except Exception as exc:
+        _log(f"go2rtc not available: {exc}")
         return None
 
 
