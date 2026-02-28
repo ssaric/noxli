@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 (2026-02-28)
+
+- fix: replace release-please with direct tag-and-release workflow
+
+
 ## 0.4.1
 
 - Fix YAMNet model download URL (use TF Hub instead of Kaggle redirect)
