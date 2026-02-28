@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Fix YAMNet model download URL (use TF Hub instead of Kaggle redirect)
+- Add HLS stream support for HA camera stream resolution
+
 ## 0.4.0
 
 - YAMNet-based baby cry detection with live audio analysis
