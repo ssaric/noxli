@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 (2026-02-28)
+
+- feat: add detection monitor UI with live feed and audio preview
+
+
 ## 0.4.2 (2026-02-28)
 
 - fix: replace release-please with direct tag-and-release workflow

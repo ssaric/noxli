@@ -1,5 +1,5 @@
 name: Noxli
-version: 0.4.2
+version: 0.5.0
 slug: noxli
 description: >-
   Baby cry detector using YAMNet with RTSP stream analysis,
