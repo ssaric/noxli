@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 (2026-02-28)
+
+- fix: re-resolve expired HLS stream URLs on detection start
+
+
 ## 0.5.1 (2026-02-28)
 
 - fix: pass Supervisor auth token to ffmpeg for HLS streams
