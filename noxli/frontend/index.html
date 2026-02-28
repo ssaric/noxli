@@ -336,6 +336,211 @@
       font-size: 0.8rem;
       color: var(--text-dim);
     }
+    .timeline-sleep-band {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 2px;
+      z-index: 0;
+    }
+    .timeline-sleep-band.nap   { background: #7e57c2; opacity: 0.35; }
+    .timeline-sleep-band.night { background: #3949ab; opacity: 0.35; }
+
+    /* Sleep section */
+    .sleep-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .sleep-section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .sleep-quick-action { margin-bottom: 12px; }
+    .sleep-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .sleep-btn.start {
+      background: #7e57c2;
+      color: #fff;
+    }
+    .sleep-btn.start:hover { background: #9575cd; }
+    .sleep-btn.stop {
+      background: #f57c00;
+      color: #fff;
+    }
+    .sleep-btn.stop:hover { background: #fb8c00; }
+    .sleep-active-info {
+      text-align: center;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .sleep-timer {
+      font-family: monospace;
+      font-size: 1.3rem;
+      color: var(--warning);
+      font-weight: 600;
+    }
+
+    /* Chip groups */
+    .chip-group {
+      margin-bottom: 10px;
+    }
+    .chip-group-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .chip:hover { border-color: #666; color: var(--text); }
+    .chip.active {
+      border-color: #7e57c2;
+      background: #7e57c220;
+      color: #ce93d8;
+    }
+    .chip.active.type-night {
+      border-color: #3949ab;
+      background: #3949ab20;
+      color: #7986cb;
+    }
+
+    /* Past session form */
+    .past-session-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .past-session-toggle {
+      width: 100%;
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: none;
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .past-session-toggle:hover { background: var(--surface-hover); }
+    .past-session-body {
+      padding: 14px;
+      display: none;
+      background: var(--bg);
+    }
+    .past-session-body.open { display: block; }
+    .past-session-body .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .past-session-body .form-field {
+      flex: 1;
+    }
+    .past-session-body label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .past-session-body input,
+    .past-session-body select,
+    .past-session-body textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+    }
+    .past-session-body input:focus,
+    .past-session-body select:focus,
+    .past-session-body textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .past-session-body textarea { resize: vertical; min-height: 50px; font-family: inherit; }
+
+    /* Session list */
+    .session-list { margin-top: 14px; }
+    .session-list h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-dim);
+    }
+    .session-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      flex-wrap: wrap;
+    }
+    .session-type-badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .session-type-badge.nap   { background: #7e57c220; color: #ce93d8; }
+    .session-type-badge.night { background: #3949ab20; color: #7986cb; }
+    .session-time { color: var(--text); white-space: nowrap; }
+    .session-duration { color: var(--text-dim); white-space: nowrap; }
+    .session-method { color: var(--text-dim); font-style: italic; }
+    .session-wakes {
+      color: var(--error);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .session-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .session-actions button {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body>
@@ -363,6 +568,108 @@
       <div id="timelineLabels" class="timeline-labels"></div>
     </div>
     <div id="timelineEmpty" class="timeline-empty" style="display:none">No events in the last 24 hours</div>
+  </div>
+
+  <div id="sleepSection" class="sleep-section">
+    <h2>Sleep Tracking</h2>
+
+    <div class="sleep-quick-action">
+      <button id="sleepToggleBtn" class="sleep-btn start" onclick="toggleSleep()">Start Sleep</button>
+      <div id="sleepActiveInfo" class="sleep-active-info" style="display:none">
+        <span class="sleep-timer" id="sleepTimer">00:00:00</span><br>
+        <span id="sleepStartedAt"></span>
+      </div>
+    </div>
+
+    <div id="sleepChips" style="display:none">
+      <div class="chip-group">
+        <div class="chip-group-label">Type</div>
+        <div class="chip-row" id="chipType">
+          <span class="chip active" data-value="nap" onclick="selectChip('type',this)">Nap</span>
+          <span class="chip" data-value="night" onclick="selectChip('type',this)">Night</span>
+        </div>
+      </div>
+      <div class="chip-group">
+        <div class="chip-group-label">Method</div>
+        <div class="chip-row" id="chipMethod">
+          <span class="chip" data-value="nursing" onclick="selectChip('method',this)">Nursing</span>
+          <span class="chip" data-value="rocking" onclick="selectChip('method',this)">Rocking</span>
+          <span class="chip" data-value="laying_down" onclick="selectChip('method',this)">Laying down</span>
+          <span class="chip" data-value="contact_nap" onclick="selectChip('method',this)">Contact nap</span>
+          <span class="chip" data-value="stroller" onclick="selectChip('method',this)">Stroller</span>
+          <span class="chip" data-value="car_ride" onclick="selectChip('method',this)">Car ride</span>
+        </div>
+      </div>
+      <div class="chip-group">
+        <div class="chip-group-label">Time to sleep</div>
+        <div class="chip-row" id="chipTTS">
+          <span class="chip" data-value="5" onclick="selectChip('tts',this)">5m</span>
+          <span class="chip" data-value="10" onclick="selectChip('tts',this)">10m</span>
+          <span class="chip" data-value="15" onclick="selectChip('tts',this)">15m</span>
+          <span class="chip" data-value="20" onclick="selectChip('tts',this)">20m</span>
+          <span class="chip" data-value="30" onclick="selectChip('tts',this)">30m</span>
+          <span class="chip" data-value="45" onclick="selectChip('tts',this)">45m</span>
+          <span class="chip" data-value="60" onclick="selectChip('tts',this)">60m</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="past-session-section">
+      <button class="past-session-toggle" onclick="togglePastSession()">
+        <span id="pastSessionLabel">Add Past Session</span>
+        <span id="pastSessionArrow">&#9654;</span>
+      </button>
+      <div id="pastSessionBody" class="past-session-body">
+        <input type="hidden" id="editSessionId" value="">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Start</label>
+            <input type="datetime-local" id="psStart">
+          </div>
+          <div class="form-field">
+            <label>End</label>
+            <input type="datetime-local" id="psEnd">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Type</label>
+            <select id="psType"><option value="nap">Nap</option><option value="night">Night</option></select>
+          </div>
+          <div class="form-field">
+            <label>Method</label>
+            <select id="psMethod">
+              <option value="">—</option>
+              <option value="nursing">Nursing</option>
+              <option value="rocking">Rocking</option>
+              <option value="laying_down">Laying down</option>
+              <option value="contact_nap">Contact nap</option>
+              <option value="stroller">Stroller</option>
+              <option value="car_ride">Car ride</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Time to sleep (min)</label>
+            <input type="number" id="psTTS" min="0" max="120" placeholder="—">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Notes</label>
+            <textarea id="psNotes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="primary" onclick="savePastSession()">Save Session</button>
+          <button onclick="cancelEditSession()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="session-list">
+      <h3>Recent Sessions</h3>
+      <div id="sessionList"></div>
+    </div>
   </div>
 
   <div id="status" class="status"></div>
@@ -636,33 +943,53 @@ async function loadCurrentConfig() {
 
 // --- Timeline ---
 
+let _timelineSleepSessions = [];
+
 async function loadTimeline() {
   try {
-    const resp = await api('/api/events?hours=24');
-    if (!resp.ok) return;
-    const data = await resp.json();
-    renderTimeline(data.events || []);
+    const [evResp, slResp] = await Promise.all([
+      api('/api/events?hours=24'),
+      api('/api/sleep?hours=24'),
+    ]);
+    const evData = evResp.ok ? await evResp.json() : { events: [] };
+    const slData = slResp.ok ? await slResp.json() : { sessions: [] };
+    _timelineSleepSessions = slData.sessions || [];
+    renderTimeline(evData.events || [], _timelineSleepSessions);
   } catch (e) { /* silent */ }
 }
 
-function renderTimeline(events) {
+function renderTimeline(events, sleepSessions) {
   const bar = document.getElementById('timelineBar');
   const labels = document.getElementById('timelineLabels');
   const countEl = document.getElementById('timelineCount');
   const emptyEl = document.getElementById('timelineEmpty');
 
-  // Remove old markers
-  bar.querySelectorAll('.timeline-marker').forEach(m => m.remove());
+  // Remove old markers and bands
+  bar.querySelectorAll('.timeline-marker, .timeline-sleep-band').forEach(m => m.remove());
   labels.innerHTML = '';
 
   countEl.textContent = events.length === 1
     ? '1 event' : events.length + ' events';
-  emptyEl.style.display = events.length === 0 ? 'block' : 'none';
+  emptyEl.style.display = events.length === 0 && (!sleepSessions || sleepSessions.length === 0) ? 'block' : 'none';
 
   const now = Date.now() / 1000;
   const windowStart = now - 86400;
 
-  // Render markers
+  // Render sleep bands behind markers
+  (sleepSessions || []).forEach(s => {
+    const start = Math.max(s.start_time, windowStart);
+    const end = s.end_time != null ? Math.min(s.end_time, now) : now;
+    if (start >= now || end <= windowStart) return;
+    const leftPct = (start - windowStart) / 86400 * 100;
+    const widthPct = (end - start) / 86400 * 100;
+    const band = document.createElement('div');
+    band.className = 'timeline-sleep-band ' + (s.session_type || 'nap');
+    band.style.left = leftPct + '%';
+    band.style.width = widthPct + '%';
+    bar.appendChild(band);
+  });
+
+  // Render cry markers
   events.forEach(ev => {
     const leftPct = (ev.timestamp - windowStart) / 86400 * 100;
     const widthPct = Math.max(0.3, ev.duration / 86400 * 100);
@@ -685,23 +1012,363 @@ function renderTimeline(events) {
     bar.appendChild(marker);
   });
 
-  // Hour labels
-  const firstHour = Math.ceil(windowStart / 3600) * 3600;
-  for (let h = firstHour; h < now; h += 3600) {
+  // Hour labels — every 3 hours to avoid crowding
+  const step = 3 * 3600;
+  const firstLabel = Math.ceil(windowStart / step) * step;
+  for (let h = firstLabel; h < now; h += step) {
     const pct = (h - windowStart) / 86400 * 100;
-    if (pct < 2 || pct > 98) continue;
+    if (pct < 3 || pct > 97) continue;
     const lbl = document.createElement('span');
     lbl.style.left = pct + '%';
     const d = new Date(h * 1000);
-    lbl.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    lbl.textContent = d.toLocaleTimeString([], { hour: 'numeric', hour12: true });
     labels.appendChild(lbl);
   }
+}
+
+// --- Sleep tracking ---
+
+let activeSession = null;
+let sleepTimerInterval = null;
+
+function fmtDuration(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function fmtTimeRange(startEpoch, endEpoch) {
+  const opts = { hour: '2-digit', minute: '2-digit' };
+  const s = new Date(startEpoch * 1000).toLocaleTimeString([], opts);
+  if (endEpoch == null) return s + ' — now';
+  const e = new Date(endEpoch * 1000).toLocaleTimeString([], opts);
+  return s + ' — ' + e;
+}
+
+function fmtMethodLabel(m) {
+  if (!m) return '';
+  return m.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function updateSleepUI() {
+  const btn = document.getElementById('sleepToggleBtn');
+  const info = document.getElementById('sleepActiveInfo');
+  const chips = document.getElementById('sleepChips');
+
+  if (activeSession) {
+    btn.textContent = 'Baby Woke Up';
+    btn.className = 'sleep-btn stop';
+    info.style.display = 'block';
+    chips.style.display = 'block';
+    const started = new Date(activeSession.start_time * 1000);
+    document.getElementById('sleepStartedAt').textContent = 'started at ' + started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Restore chip state from active session
+    restoreChips(activeSession);
+    startSleepTimer();
+  } else {
+    btn.textContent = 'Start Sleep';
+    btn.className = 'sleep-btn start';
+    info.style.display = 'none';
+    chips.style.display = 'none';
+    stopSleepTimer();
+  }
+}
+
+function startSleepTimer() {
+  stopSleepTimer();
+  function tick() {
+    if (!activeSession) return;
+    const elapsed = Date.now() / 1000 - activeSession.start_time;
+    document.getElementById('sleepTimer').textContent = fmtDuration(elapsed);
+  }
+  tick();
+  sleepTimerInterval = setInterval(tick, 1000);
+}
+
+function stopSleepTimer() {
+  if (sleepTimerInterval) { clearInterval(sleepTimerInterval); sleepTimerInterval = null; }
+}
+
+function restoreChips(session) {
+  // Type
+  document.querySelectorAll('#chipType .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.value === (session.session_type || 'nap'));
+    if (c.dataset.value === 'night' && c.classList.contains('active')) c.classList.add('type-night');
+    else c.classList.remove('type-night');
+  });
+  // Method
+  document.querySelectorAll('#chipMethod .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.value === session.method);
+  });
+  // TTS
+  document.querySelectorAll('#chipTTS .chip').forEach(c => {
+    c.classList.toggle('active', session.time_to_sleep_minutes != null && c.dataset.value === String(session.time_to_sleep_minutes));
+  });
+}
+
+function selectChip(group, el) {
+  const groupMap = { type: 'chipType', method: 'chipMethod', tts: 'chipTTS' };
+  const container = document.getElementById(groupMap[group]);
+  const wasActive = el.classList.contains('active');
+
+  // Deselect all in group
+  container.querySelectorAll('.chip').forEach(c => { c.classList.remove('active', 'type-night'); });
+
+  // Toggle: if was active, leave deselected (nullable). Otherwise select.
+  if (!wasActive) {
+    el.classList.add('active');
+    if (group === 'type' && el.dataset.value === 'night') el.classList.add('type-night');
+  }
+
+  // Patch active session if there is one
+  if (activeSession) {
+    const payload = {};
+    if (group === 'type') {
+      const sel = container.querySelector('.chip.active');
+      payload.session_type = sel ? sel.dataset.value : 'nap';
+    } else if (group === 'method') {
+      const sel = container.querySelector('.chip.active');
+      payload.method = sel ? sel.dataset.value : null;
+    } else if (group === 'tts') {
+      const sel = container.querySelector('.chip.active');
+      payload.time_to_sleep_minutes = sel ? parseInt(sel.dataset.value) : null;
+    }
+    // Only send non-null values (PATCH exclude_none)
+    const body = {};
+    for (const [k, v] of Object.entries(payload)) {
+      if (v != null) body[k] = v;
+    }
+    if (Object.keys(body).length > 0) {
+      api('/api/sleep/' + activeSession.id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+  }
+}
+
+async function toggleSleep() {
+  if (activeSession) {
+    // End session
+    try {
+      await api('/api/sleep/' + activeSession.id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ end_time: Date.now() / 1000 }),
+      });
+      activeSession = null;
+      updateSleepUI();
+      loadSleepSessions();
+      loadTimeline();
+    } catch (e) { /* ignore */ }
+  } else {
+    // Start session
+    try {
+      const resp = await api('/api/sleep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (resp.status === 409) {
+        setStatus('A sleep session is already active', 'error');
+        return;
+      }
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      activeSession = await resp.json();
+      updateSleepUI();
+      loadTimeline();
+    } catch (e) {
+      setStatus('Failed to start sleep: ' + e.message, 'error');
+    }
+  }
+}
+
+async function loadSleepState() {
+  try {
+    const resp = await api('/api/sleep/active');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    activeSession = data.active_session || null;
+    updateSleepUI();
+  } catch (e) { /* ignore */ }
+}
+
+async function loadSleepSessions() {
+  try {
+    const resp = await api('/api/sleep?hours=24');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderSessionList(data.sessions || []);
+  } catch (e) { /* ignore */ }
+}
+
+function renderSessionList(sessions) {
+  const container = document.getElementById('sessionList');
+  if (sessions.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-dim);font-size:0.82rem;">No sessions in the last 24 hours</div>';
+    return;
+  }
+  container.innerHTML = sessions.map(s => {
+    const badge = s.session_type === 'night'
+      ? '<span class="session-type-badge night">night</span>'
+      : '<span class="session-type-badge nap">nap</span>';
+    const time = fmtTimeRange(s.start_time, s.end_time);
+    const dur = s.duration_minutes != null ? s.duration_minutes.toFixed(0) + 'm' : '';
+    const method = s.method ? fmtMethodLabel(s.method) : '';
+    const wakes = (s.wake_ups && s.wake_ups.length > 0)
+      ? '<span class="session-wakes">' + s.wake_ups.length + ' wake-up' + (s.wake_ups.length > 1 ? 's' : '') + '</span>'
+      : '';
+    const isActive = s.end_time == null;
+    return `<div class="session-row">
+      ${badge}
+      <span class="session-time">${esc(time)}</span>
+      <span class="session-duration">${esc(dur)}</span>
+      <span class="session-method">${esc(method)}</span>
+      ${wakes}
+      <span class="session-actions">
+        ${isActive ? '' : '<button onclick="editSession(' + s.id + ')">Edit</button>'}
+        <button onclick="deleteSession(${s.id})">Del</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+async function deleteSession(id) {
+  try {
+    const resp = await api('/api/sleep/' + id, { method: 'DELETE' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (activeSession && activeSession.id === id) {
+      activeSession = null;
+      updateSleepUI();
+    }
+    loadSleepSessions();
+    loadTimeline();
+  } catch (e) {
+    setStatus('Delete failed: ' + e.message, 'error');
+  }
+}
+
+function editSession(id) {
+  // Find session from rendered list (re-fetch for accuracy)
+  api('/api/sleep?hours=168').then(r => r.json()).then(data => {
+    const s = (data.sessions || []).find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('editSessionId').value = id;
+    document.getElementById('pastSessionLabel').textContent = 'Edit Session #' + id;
+
+    // Populate form
+    const toLocal = epoch => {
+      const d = new Date(epoch * 1000);
+      const off = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - off * 60000);
+      return local.toISOString().slice(0, 16);
+    };
+    document.getElementById('psStart').value = toLocal(s.start_time);
+    document.getElementById('psEnd').value = s.end_time ? toLocal(s.end_time) : '';
+    document.getElementById('psType').value = s.session_type || 'nap';
+    document.getElementById('psMethod').value = s.method || '';
+    document.getElementById('psTTS').value = s.time_to_sleep_minutes || '';
+    document.getElementById('psNotes').value = s.notes || '';
+
+    // Open form
+    const body = document.getElementById('pastSessionBody');
+    if (!body.classList.contains('open')) {
+      body.classList.add('open');
+      document.getElementById('pastSessionArrow').innerHTML = '&#9660;';
+    }
+  });
+}
+
+function cancelEditSession() {
+  document.getElementById('editSessionId').value = '';
+  document.getElementById('pastSessionLabel').textContent = 'Add Past Session';
+  document.getElementById('psStart').value = '';
+  document.getElementById('psEnd').value = '';
+  document.getElementById('psType').value = 'nap';
+  document.getElementById('psMethod').value = '';
+  document.getElementById('psTTS').value = '';
+  document.getElementById('psNotes').value = '';
+  const body = document.getElementById('pastSessionBody');
+  body.classList.remove('open');
+  document.getElementById('pastSessionArrow').innerHTML = '&#9654;';
+}
+
+async function savePastSession() {
+  const editId = document.getElementById('editSessionId').value;
+  const startVal = document.getElementById('psStart').value;
+  const endVal = document.getElementById('psEnd').value;
+  const typeVal = document.getElementById('psType').value;
+  const methodVal = document.getElementById('psMethod').value;
+  const ttsVal = document.getElementById('psTTS').value;
+  const notesVal = document.getElementById('psNotes').value;
+
+  if (!startVal) { setStatus('Start time is required', 'error'); return; }
+  const startEpoch = new Date(startVal).getTime() / 1000;
+  const endEpoch = endVal ? new Date(endVal).getTime() / 1000 : null;
+
+  if (editId) {
+    // PATCH existing
+    const payload = {
+      session_type: typeVal,
+      notes: notesVal,
+    };
+    if (endEpoch != null) payload.end_time = endEpoch;
+    if (methodVal) payload.method = methodVal;
+    if (ttsVal) payload.time_to_sleep_minutes = parseInt(ttsVal);
+    try {
+      const resp = await api('/api/sleep/' + editId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.detail || 'HTTP ' + resp.status); }
+      setStatus('Session updated', 'success');
+      cancelEditSession();
+      loadSleepSessions();
+      loadTimeline();
+    } catch (e) { setStatus('Update failed: ' + e.message, 'error'); }
+  } else {
+    // POST new
+    const payload = {
+      start_time: startEpoch,
+      session_type: typeVal,
+      notes: notesVal,
+    };
+    if (endEpoch != null) payload.end_time = endEpoch;
+    if (methodVal) payload.method = methodVal;
+    if (ttsVal) payload.time_to_sleep_minutes = parseInt(ttsVal);
+    try {
+      const resp = await api('/api/sleep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.detail || 'HTTP ' + resp.status); }
+      setStatus('Session added', 'success');
+      cancelEditSession();
+      loadSleepSessions();
+      loadTimeline();
+    } catch (e) { setStatus('Add failed: ' + e.message, 'error'); }
+  }
+}
+
+function togglePastSession() {
+  const body = document.getElementById('pastSessionBody');
+  const arrow = document.getElementById('pastSessionArrow');
+  const open = body.classList.toggle('open');
+  arrow.innerHTML = open ? '&#9660;' : '&#9654;';
+  if (!open) cancelEditSession();
 }
 
 // Init
 loadCurrentConfig();
 loadCameras();
 loadTimeline();
+loadSleepState();
+loadSleepSessions();
 setInterval(loadTimeline, 60000);
 </script>
 </body>

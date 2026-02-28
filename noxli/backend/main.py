@@ -4,15 +4,34 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from . import db, ha
+from . import audio_stream, db, ha
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # Auto-start detection if rtsp_url is configured
+    config = _read_config()
+    rtsp_url = config.get("rtsp_url", "")
+    if rtsp_url:
+        sensitivity = config.get("detection_sensitivity", 0.5)
+        try:
+            audio_stream.loop.start(rtsp_url, sensitivity)
+        except Exception as e:
+            print(f"[noxli] Auto-start detection failed: {e}")
+    yield
+    # Shutdown: stop detection loop
+    audio_stream.loop.stop()
+
+
+app = FastAPI(lifespan=_lifespan)
 
 CONFIG_PATH = Path("/data/config.json")
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -113,6 +132,43 @@ async def set_config(body: ConfigUpdate):
     return JSONResponse(config)
 
 
+# --- Detection control ---
+
+
+@app.post("/api/detection/start")
+async def start_detection():
+    config = _read_config()
+    rtsp_url = config.get("rtsp_url", "")
+    if not rtsp_url:
+        raise HTTPException(status_code=400, detail="No rtsp_url configured")
+    sensitivity = config.get("detection_sensitivity", 0.5)
+    try:
+        audio_stream.loop.start(rtsp_url, sensitivity)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"status": "started", "rtsp_url": rtsp_url, "sensitivity": sensitivity}
+
+
+@app.post("/api/detection/stop")
+async def stop_detection():
+    audio_stream.loop.stop()
+    return {"status": "stopped"}
+
+
+@app.get("/api/detection/status")
+async def detection_status():
+    s = audio_stream.loop.stats
+    return {
+        "running": s.running,
+        "rtsp_url": s.rtsp_url,
+        "events_detected": s.events_detected,
+        "last_event_time": s.last_event_time,
+        "chunks_processed": s.chunks_processed,
+        "started_at": s.started_at,
+        "error": s.error,
+    }
+
+
 # --- Events ---
 
 
@@ -154,3 +210,187 @@ async def create_event(body: EventCreate):
             (cur.lastrowid,),
         ).fetchone()
     return dict(row)
+
+
+# --- Sleep Sessions ---
+
+SLEEP_METHODS = ["nursing", "rocking", "laying_down", "contact_nap", "stroller", "car_ride"]
+SLEEP_TYPES = ["nap", "night"]
+TIME_TO_SLEEP_PRESETS = [5, 10, 15, 20, 30, 45, 60]
+
+_SLEEP_COLS = "id, start_time, end_time, session_type, method, time_to_sleep_minutes, notes, created_at"
+
+
+class SleepSessionCreate(BaseModel):
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
+    session_type: str = "nap"
+    method: Optional[str] = None
+    time_to_sleep_minutes: Optional[int] = None
+    notes: str = ""
+
+
+class SleepSessionUpdate(BaseModel):
+    end_time: Optional[float] = None
+    session_type: Optional[str] = None
+    method: Optional[str] = None
+    time_to_sleep_minutes: Optional[int] = None
+    notes: Optional[str] = None
+
+
+def _session_dict(row) -> dict:
+    d = dict(row)
+    if d["end_time"] is not None:
+        d["duration_minutes"] = round((d["end_time"] - d["start_time"]) / 60, 1)
+    else:
+        d["duration_minutes"] = round((time.time() - d["start_time"]) / 60, 1)
+    return d
+
+
+def _attach_wake_ups(conn, sessions: List[dict]) -> None:
+    for s in sessions:
+        start = s["start_time"]
+        end = s["end_time"] if s["end_time"] is not None else time.time()
+        rows = conn.execute(
+            "SELECT id, timestamp, duration, confidence "
+            "FROM events WHERE timestamp BETWEEN ? AND ? "
+            "ORDER BY timestamp ASC",
+            (start, end),
+        ).fetchall()
+        s["wake_ups"] = [dict(r) for r in rows]
+
+
+@app.get("/api/sleep/active")
+async def get_active_sleep_session():
+    with db.get_db() as conn:
+        row = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions WHERE end_time IS NULL "
+            "ORDER BY start_time DESC LIMIT 1",
+        ).fetchone()
+        if not row:
+            return {"active_session": None}
+        result = _session_dict(row)
+        _attach_wake_ups(conn, [result])
+    return {"active_session": result}
+
+
+@app.get("/api/sleep/methods")
+async def get_sleep_methods():
+    return {
+        "methods": SLEEP_METHODS,
+        "types": SLEEP_TYPES,
+        "time_to_sleep_presets": TIME_TO_SLEEP_PRESETS,
+    }
+
+
+@app.get("/api/sleep")
+async def list_sleep_sessions(hours: float = Query(default=24, ge=0.1, le=168)):
+    since = time.time() - hours * 3600
+    with db.get_db() as conn:
+        rows = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions "
+            "WHERE start_time >= ? OR end_time IS NULL "
+            "ORDER BY start_time DESC",
+            (since,),
+        ).fetchall()
+        sessions = [_session_dict(r) for r in rows]
+        _attach_wake_ups(conn, sessions)
+
+        active = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions WHERE end_time IS NULL "
+            "ORDER BY start_time DESC LIMIT 1",
+        ).fetchone()
+
+    active_dict = None
+    if active:
+        active_dict = _session_dict(active)
+        for s in sessions:
+            if s["id"] == active_dict["id"]:
+                active_dict = s
+                break
+
+    return {
+        "sessions": sessions,
+        "active_session": active_dict,
+        "query": {"hours": hours, "since": since},
+    }
+
+
+@app.post("/api/sleep")
+async def create_sleep_session(body: SleepSessionCreate):
+    if body.session_type not in SLEEP_TYPES:
+        raise HTTPException(status_code=422, detail=f"session_type must be one of {SLEEP_TYPES}")
+    if body.method is not None and body.method not in SLEEP_METHODS:
+        raise HTTPException(status_code=422, detail=f"method must be one of {SLEEP_METHODS}")
+
+    ts = body.start_time if body.start_time is not None else time.time()
+
+    with db.get_db() as conn:
+        # Guard: only one active session at a time
+        if body.end_time is None:
+            existing = conn.execute(
+                "SELECT id FROM sleep_sessions WHERE end_time IS NULL",
+            ).fetchone()
+            if existing:
+                raise HTTPException(status_code=409, detail="An active sleep session already exists")
+
+        cur = conn.execute(
+            "INSERT INTO sleep_sessions (start_time, end_time, session_type, method, time_to_sleep_minutes, notes) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (ts, body.end_time, body.session_type, body.method, body.time_to_sleep_minutes, body.notes),
+        )
+        conn.commit()
+        row = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions WHERE id = ?",
+            (cur.lastrowid,),
+        ).fetchone()
+
+    return _session_dict(row)
+
+
+@app.patch("/api/sleep/{session_id}")
+async def update_sleep_session(session_id: int, body: SleepSessionUpdate):
+    if body.session_type is not None and body.session_type not in SLEEP_TYPES:
+        raise HTTPException(status_code=422, detail=f"session_type must be one of {SLEEP_TYPES}")
+    if body.method is not None and body.method not in SLEEP_METHODS:
+        raise HTTPException(status_code=422, detail=f"method must be one of {SLEEP_METHODS}")
+
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="No fields to update")
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    values = list(updates.values())
+
+    with db.get_db() as conn:
+        row = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        conn.execute(
+            f"UPDATE sleep_sessions SET {set_clause} WHERE id = ?",
+            (*values, session_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            f"SELECT {_SLEEP_COLS} FROM sleep_sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        result = _session_dict(row)
+        _attach_wake_ups(conn, [result])
+
+    return result
+
+
+@app.delete("/api/sleep/{session_id}")
+async def delete_sleep_session(session_id: int):
+    with db.get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM sleep_sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        conn.execute("DELETE FROM sleep_sessions WHERE id = ?", (session_id,))
+        conn.commit()
+    return {"deleted": session_id}
