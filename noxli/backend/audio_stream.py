@@ -112,6 +112,10 @@ class DetectionLoop:
         if rtsp_url.startswith("rtsp"):
             return ["ffmpeg", "-rtsp_transport", "tcp", "-i", rtsp_url, "-vn"] + out_args
 
+        # HTTP/HLS stream (e.g. HA supervisor HLS URL)
+        if rtsp_url.startswith("http"):
+            return ["ffmpeg", "-i", rtsp_url, "-vn"] + out_args
+
         # File path or file:// URL
         source = rtsp_url.removeprefix("file://")
         return ["ffmpeg", "-i", source, "-vn"] + out_args

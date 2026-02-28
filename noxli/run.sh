@@ -21,13 +21,10 @@ mkdir -p /data/db /data/models
 MODELS_DIR="/data/models"
 if [ ! -f "${MODELS_DIR}/yamnet.tflite" ] && [ ! -f "${MODELS_DIR}/yamnet.onnx" ]; then
     bashio::log.info "Downloading YAMNet model..."
-    curl -sL "https://www.kaggle.com/models/google/yamnet/tfLite/classification-tflite/1?lite-format=tflite" \
-        -o /tmp/yamnet.tar.gz \
-        && tar -xf /tmp/yamnet.tar.gz -C "${MODELS_DIR}" \
-        && mv "${MODELS_DIR}/1.tflite" "${MODELS_DIR}/yamnet.tflite" \
-        && rm -f /tmp/yamnet.tar.gz \
+    curl -sL "https://tfhub.dev/google/lite-model/yamnet/classification/tflite/1?lite-format=tflite" \
+        -o "${MODELS_DIR}/yamnet.tflite" \
         && bashio::log.info "YAMNet model downloaded" \
-        || bashio::log.warning "Failed to download YAMNet model"
+        || bashio::log.warning "Failed to download YAMNet model — try placing yamnet.tflite in /data/models/ manually"
 fi
 if [ ! -f "${MODELS_DIR}/yamnet_class_map.csv" ]; then
     bashio::log.info "Downloading YAMNet class map..."
