@@ -1,0 +1,16 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "component": "noxli",
+      "changelog-path": "noxli/CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "noxli/config.yaml",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  }
+}
