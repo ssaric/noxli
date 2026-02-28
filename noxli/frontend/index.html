@@ -541,6 +541,114 @@
       padding: 4px 10px;
       font-size: 0.75rem;
     }
+
+    /* Detection Monitor */
+    .monitor-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .monitor-section h2 {
+      font-size: 1rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .monitor-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+    .monitor-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+      flex-shrink: 0;
+    }
+    .monitor-dot.active {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+      animation: pulse-dot 2s infinite;
+    }
+    .monitor-dot.error { background: var(--error); }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .monitor-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .monitor-controls button {
+      font-size: 0.8rem;
+      padding: 6px 14px;
+    }
+    .monitor-feed {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+    .monitor-feed .chunk-row {
+      display: flex;
+      gap: 8px;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .monitor-feed .chunk-row.cry {
+      background: rgba(239, 83, 80, 0.15);
+    }
+    .monitor-feed .chunk-time {
+      color: var(--text-dim);
+      flex-shrink: 0;
+      width: 65px;
+    }
+    .monitor-feed .chunk-level {
+      flex-shrink: 0;
+      width: 80px;
+    }
+    .monitor-feed .chunk-level-bar {
+      display: inline-block;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+    .monitor-feed .chunk-class {
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .monitor-feed .chunk-cry {
+      flex-shrink: 0;
+      width: 50px;
+      text-align: right;
+      font-weight: 600;
+    }
+    .monitor-feed .chunk-cry.high { color: var(--error); }
+    .monitor-feed .chunk-cry.low { color: var(--text-dim); }
+    .monitor-error {
+      color: var(--error);
+      font-size: 0.82rem;
+      margin-top: 8px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
@@ -670,6 +778,23 @@
       <h3>Recent Sessions</h3>
       <div id="sessionList"></div>
     </div>
+  </div>
+
+  <!-- Detection Monitor -->
+  <div id="monitorSection" class="monitor-section">
+    <h2>Detection Monitor</h2>
+    <div class="monitor-status">
+      <span class="monitor-dot" id="monitorDot"></span>
+      <span id="monitorStatusText">Loading...</span>
+      <span style="margin-left:auto;color:var(--text-dim)" id="monitorChunkCount"></span>
+    </div>
+    <div class="monitor-controls">
+      <button id="monitorListenBtn" onclick="toggleAudioPreview()">Listen</button>
+      <button id="monitorToggleBtn" onclick="toggleMonitorFeed()">Show Live Feed</button>
+    </div>
+    <audio id="monitorAudio" style="display:none"></audio>
+    <div id="monitorFeed" class="monitor-feed" style="display:none"></div>
+    <div id="monitorError" class="monitor-error" style="display:none"></div>
   </div>
 
   <div id="status" class="status"></div>
@@ -1363,13 +1488,127 @@ function togglePastSession() {
   if (!open) cancelEditSession();
 }
 
+// --- Detection Monitor ---
+
+let monitorPolling = null;
+let audioPlaying = false;
+
+async function loadMonitorStatus() {
+  try {
+    const resp = await api('/api/detection/status');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const dot = document.getElementById('monitorDot');
+    const text = document.getElementById('monitorStatusText');
+    const countEl = document.getElementById('monitorChunkCount');
+
+    if (data.running) {
+      dot.className = 'monitor-dot active';
+      text.textContent = 'Running — ' + data.events_detected + ' events';
+    } else if (data.error || data.ffmpeg_error) {
+      dot.className = 'monitor-dot error';
+      text.textContent = 'Error';
+    } else {
+      dot.className = 'monitor-dot';
+      text.textContent = 'Stopped';
+    }
+    if (data.chunks_processed > 0) {
+      countEl.textContent = data.chunks_processed + ' chunks';
+    } else {
+      countEl.textContent = '';
+    }
+  } catch (e) {
+    document.getElementById('monitorStatusText').textContent = 'Unavailable';
+  }
+}
+
+function toggleAudioPreview() {
+  const audio = document.getElementById('monitorAudio');
+  const btn = document.getElementById('monitorListenBtn');
+  if (audioPlaying) {
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    btn.textContent = 'Listen';
+    audioPlaying = false;
+  } else {
+    const base = window.INGRESS_ENTRY || '';
+    audio.src = base + '/api/detection/audio';
+    audio.play().catch(e => {
+      document.getElementById('monitorError').style.display = 'block';
+      document.getElementById('monitorError').textContent = 'Audio playback failed: ' + e.message;
+    });
+    btn.textContent = 'Stop Listening';
+    audioPlaying = true;
+  }
+}
+
+function toggleMonitorFeed() {
+  const feed = document.getElementById('monitorFeed');
+  const btn = document.getElementById('monitorToggleBtn');
+  if (monitorPolling) {
+    clearInterval(monitorPolling);
+    monitorPolling = null;
+    feed.style.display = 'none';
+    btn.textContent = 'Show Live Feed';
+  } else {
+    feed.style.display = 'block';
+    btn.textContent = 'Hide Live Feed';
+    pollMonitorFeed();
+    monitorPolling = setInterval(pollMonitorFeed, 2000);
+  }
+}
+
+async function pollMonitorFeed() {
+  const feed = document.getElementById('monitorFeed');
+  const errEl = document.getElementById('monitorError');
+  try {
+    const resp = await api('/api/detection/debug');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    if (data.error || data.ffmpeg_error) {
+      errEl.style.display = 'block';
+      errEl.textContent = data.error || data.ffmpeg_error;
+    } else {
+      errEl.style.display = 'none';
+    }
+
+    if (!data.chunks || data.chunks.length === 0) {
+      feed.innerHTML = '<div style="padding:12px;color:var(--text-dim)">No audio chunks yet. Is detection running?</div>';
+      return;
+    }
+
+    const rows = data.chunks.slice().reverse().map(c => {
+      const t = new Date(c.time * 1000);
+      const ts = t.toLocaleTimeString();
+      const levelPct = Math.min(c.rms * 500, 100);
+      const cryPct = Math.round(c.cry_confidence * 100);
+      const cryClass = cryPct >= 50 ? 'high' : 'low';
+      const rowClass = c.detected ? 'chunk-row cry' : 'chunk-row';
+      return `<div class="${rowClass}">
+        <span class="chunk-time">${ts}</span>
+        <span class="chunk-level"><span class="chunk-level-bar" style="width:${levelPct}%"></span></span>
+        <span class="chunk-class">${c.top_class || '—'}</span>
+        <span class="chunk-cry ${cryClass}">${cryPct}%</span>
+      </div>`;
+    });
+    feed.innerHTML = rows.join('');
+  } catch (e) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Feed error: ' + e.message;
+  }
+}
+
 // Init
 loadCurrentConfig();
 loadCameras();
 loadTimeline();
 loadSleepState();
 loadSleepSessions();
+loadMonitorStatus();
 setInterval(loadTimeline, 60000);
+setInterval(loadMonitorStatus, 5000);
 </script>
 </body>
 </html>

@@ -2,12 +2,13 @@
 
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from . import audio_stream, db, ha
@@ -166,7 +167,56 @@ async def detection_status():
         "chunks_processed": s.chunks_processed,
         "started_at": s.started_at,
         "error": s.error,
+        "ffmpeg_error": s.ffmpeg_error,
     }
+
+
+@app.get("/api/detection/debug")
+async def detection_debug():
+    """Live debug view — last 30 chunks with audio levels and classifications."""
+    s = audio_stream.loop.stats
+    chunks = audio_stream.loop.debug_chunks
+    return {
+        "running": s.running,
+        "rtsp_url": s.rtsp_url,
+        "chunks_processed": s.chunks_processed,
+        "error": s.error,
+        "ffmpeg_error": s.ffmpeg_error,
+        "chunks": chunks,
+    }
+
+
+@app.get("/api/detection/audio")
+async def detection_audio():
+    """Stream live audio from the configured source as MP3 for browser playback."""
+    config = _read_config()
+    rtsp_url = config.get("rtsp_url", "")
+    if not rtsp_url:
+        raise HTTPException(status_code=400, detail="No rtsp_url configured")
+
+    cmd = audio_stream.loop._build_ffmpeg_cmd(rtsp_url)
+    # Replace raw s16le output with MP3 for browser compatibility
+    # Find the output format args and replace them
+    cmd = cmd[: cmd.index("-acodec")] + [
+        "-acodec", "libmp3lame", "-ab", "64k",
+        "-ar", "16000", "-ac", "1",
+        "-f", "mp3", "-",
+    ]
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
+    def generate():
+        try:
+            while True:
+                chunk = proc.stdout.read(4096)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            proc.terminate()
+            proc.wait()
+
+    return StreamingResponse(generate(), media_type="audio/mpeg")
 
 
 # --- Events ---

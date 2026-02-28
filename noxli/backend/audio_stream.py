@@ -1,5 +1,6 @@
 """Detection loop — reads audio from ffmpeg pipe and runs YAMNet inference."""
 
+import collections
 import json
 import os
 import subprocess
@@ -17,6 +18,7 @@ CHUNK_SECONDS = 1
 CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_SAMPLE * CHUNK_SECONDS  # 32000
 
 DEFAULT_COOLDOWN = 5.0  # seconds between distinct events
+DEBUG_BUFFER_SIZE = 30  # keep last N chunk results for debug endpoint
 
 
 @dataclass
@@ -37,6 +39,7 @@ class DetectionStats:
     chunks_processed: int = 0
     started_at: float | None = None
     error: str | None = None
+    ffmpeg_error: str | None = None
 
 
 class DetectionLoop:
@@ -46,11 +49,17 @@ class DetectionLoop:
         self._process: subprocess.Popen | None = None
         self._stats = DetectionStats()
         self._lock = threading.Lock()
+        self._debug_buffer: collections.deque[dict] = collections.deque(maxlen=DEBUG_BUFFER_SIZE)
 
     @property
     def stats(self) -> DetectionStats:
         with self._lock:
             return DetectionStats(**self._stats.__dict__)
+
+    @property
+    def debug_chunks(self) -> list[dict]:
+        with self._lock:
+            return list(self._debug_buffer)
 
     def start(self, rtsp_url: str, sensitivity: float = 0.5) -> None:
         if self._thread and self._thread.is_alive():
@@ -63,6 +72,7 @@ class DetectionLoop:
                 rtsp_url=rtsp_url,
                 started_at=time.time(),
             )
+            self._debug_buffer.clear()
         self._thread = threading.Thread(
             target=self._run,
             args=(rtsp_url, sensitivity),
@@ -122,12 +132,27 @@ class DetectionLoop:
 
     def _run_loop(self, rtsp_url: str, sensitivity: float) -> None:
         cmd = self._build_ffmpeg_cmd(rtsp_url)
+        print(f"[noxli] ffmpeg cmd: {' '.join(cmd)}")
 
         self._process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         )
+
+        # Read stderr in a background thread so it doesn't block
+        stderr_lines: list[str] = []
+
+        def _drain_stderr():
+            for line in self._process.stderr:
+                text = line.decode("utf-8", errors="replace").rstrip()
+                stderr_lines.append(text)
+                # Keep only last 50 lines
+                if len(stderr_lines) > 50:
+                    stderr_lines.pop(0)
+
+        stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+        stderr_thread.start()
 
         current_cry: _CryEvent | None = None
         last_event_end_chunk = -DEFAULT_COOLDOWN  # in chunk-seconds
@@ -136,6 +161,15 @@ class DetectionLoop:
         while not self._stop_event.is_set():
             data = self._process.stdout.read(CHUNK_BYTES)
             if not data:
+                # ffmpeg exited — capture why
+                stderr_thread.join(timeout=2)
+                stderr_tail = "\n".join(stderr_lines[-10:]) if stderr_lines else "no output"
+                with self._lock:
+                    self._stats.ffmpeg_error = stderr_tail
+                if chunk_index == 0:
+                    print(f"[noxli] ffmpeg produced no audio. stderr:\n{stderr_tail}")
+                else:
+                    print(f"[noxli] ffmpeg stream ended after {chunk_index} chunks")
                 break
             if len(data) < CHUNK_BYTES:
                 # Pad short final chunk
@@ -144,11 +178,41 @@ class DetectionLoop:
             # Convert s16le bytes to float32 waveform
             waveform = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
 
-            detected, confidence = detector.is_cry(waveform, threshold=sensitivity)
+            # Compute audio level
+            rms = float(np.sqrt(np.mean(waveform ** 2)))
+            peak = float(np.max(np.abs(waveform)))
+
+            results = detector.detect(waveform)
             chunk_index += 1
 
+            # Get cry confidence and top class from results
+            cry_conf = 0.0
+            top_class = ""
+            top_score = 0.0
+            for r in results:
+                for score in r["scores"].values():
+                    cry_conf = max(cry_conf, score)
+                if r["top_score"] > top_score:
+                    top_score = r["top_score"]
+                    top_class = r["top_class_name"]
+
+            detected = cry_conf >= sensitivity
+
+            # Store debug info
+            debug_entry = {
+                "chunk": chunk_index,
+                "time": time.time(),
+                "rms": round(rms, 6),
+                "peak": round(peak, 4),
+                "top_class": top_class,
+                "top_score": round(top_score, 4),
+                "cry_confidence": round(cry_conf, 4),
+                "detected": detected,
+                "silence": rms < 0.001,
+            }
             with self._lock:
                 self._stats.chunks_processed = chunk_index
+                self._debug_buffer.append(debug_entry)
 
             now = time.time()
             audio_pos = chunk_index * CHUNK_SECONDS
@@ -160,10 +224,10 @@ class DetectionLoop:
                         continue
                     current_cry = _CryEvent(
                         onset=now, onset_chunk=chunk_index,
-                        max_confidence=confidence, patches=1,
+                        max_confidence=cry_conf, patches=1,
                     )
                 else:
-                    current_cry.max_confidence = max(current_cry.max_confidence, confidence)
+                    current_cry.max_confidence = max(current_cry.max_confidence, cry_conf)
                     current_cry.patches += 1
             else:
                 if current_cry is not None:
