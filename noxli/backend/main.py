@@ -16,18 +16,28 @@ from . import audio_stream, db, ha
 from contextlib import asynccontextmanager
 
 
+_resolved_url_cache: dict = {"url": "", "time": 0.0}
+_RESOLVE_CACHE_TTL = 300  # 5 minutes
+
+
 async def _resolve_stream_url(config: dict) -> str:
     """Get a fresh stream URL, re-resolving HLS if needed (they expire)."""
     rtsp_url = config.get("rtsp_url", "")
     entity_id = config.get("entity_id", "")
 
-    # HLS supervisor URLs are ephemeral — always re-resolve from entity_id
+    # HLS supervisor URLs are ephemeral — re-resolve from entity_id (with cache)
     if entity_id and "supervisor/" in rtsp_url:
+        now = time.time()
+        if _resolved_url_cache["url"] and now - _resolved_url_cache["time"] < _RESOLVE_CACHE_TTL:
+            return _resolved_url_cache["url"]
+
         print(f"[noxli] Re-resolving stream for {entity_id} (HLS URLs expire)")
         fresh = await ha.get_stream_source(entity_id)
         if fresh:
             config["rtsp_url"] = fresh
             _write_config(config)
+            _resolved_url_cache["url"] = fresh
+            _resolved_url_cache["time"] = now
             print(f"[noxli] Fresh stream URL: {fresh}")
             return fresh
         print(f"[noxli] Re-resolve failed, using saved URL")
@@ -209,7 +219,7 @@ async def detection_debug():
 async def detection_audio():
     """Stream live audio from the configured source as MP3 for browser playback."""
     config = _read_config()
-    rtsp_url = await _resolve_stream_url(config)
+    rtsp_url = config.get("rtsp_url", "")
     if not rtsp_url:
         raise HTTPException(status_code=400, detail="No rtsp_url configured")
 
@@ -222,15 +232,20 @@ async def detection_audio():
         "-f", "mp3", "-",
     ]
 
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def generate():
         try:
+            got_data = False
             while True:
                 chunk = proc.stdout.read(4096)
                 if not chunk:
                     break
+                got_data = True
                 yield chunk
+            if not got_data:
+                # Stream had no audio — likely video-only HLS
+                print("[noxli] Audio preview: no audio in stream (video-only?)")
         finally:
             proc.terminate()
             proc.wait()
