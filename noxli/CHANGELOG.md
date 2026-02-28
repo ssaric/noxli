@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3 (2026-02-28)
+
+- fix: cache resolved HLS URLs and stop audio endpoint spam
+
+
 ## 0.5.2 (2026-02-28)
 
 - fix: re-resolve expired HLS stream URLs on detection start
