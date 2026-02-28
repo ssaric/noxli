@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0
+
+- YAMNet-based baby cry detection with live audio analysis
+- Detection loop reads audio via ffmpeg from RTSP streams, PulseAudio, or ALSA
+- Supports both TFLite and ONNX model backends
+- Auto-starts detection on boot when stream URL is configured
+- API endpoints: POST /api/detection/start, POST /api/detection/stop, GET /api/detection/status
+- Cry events stored to SQLite with duration and confidence
+- MQTT publish on cry detection (noxli/detection topic)
+- Sleep session wake_ups populated from detected cry events
+- Dev test scripts for file-based and end-to-end pipeline testing
+
 ## 0.3.0
 
 - Add 24-hour cry event timeline to ingress UI
