@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4 (2026-02-28)
+
+- fix: use go2rtc RTSP proxy for camera audio (HLS is video-only)
+
+
 ## 0.5.3 (2026-02-28)
 
 - fix: cache resolved HLS URLs and stop audio endpoint spam
