@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 (2026-02-28)
+
+- fix: pass Supervisor auth token to ffmpeg for HLS streams
+
+
 ## 0.5.0 (2026-02-28)
 
 - feat: add detection monitor UI with live feed and audio preview
