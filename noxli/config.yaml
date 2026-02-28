@@ -1,10 +1,10 @@
 name: Noxli
-version: 0.4.1
+version: 0.5.0
 slug: noxli
 description: >-
-  Baby cry detector using YAMNet with RTSP stream analysis,
-  sleep event logging, and MQTT integration.
-url: "https://github.com/ssaric/noxli"
+  Baby cry detector using YAMNet with RTSP stream analysis, sleep event logging,
+  and MQTT integration.
+url: https://github.com/ssaric/noxli
 arch:
   - amd64
   - aarch64
@@ -21,4 +21,4 @@ services:
 map:
   - type: share
     read_only: false
-watchdog: "http://[HOST]:[PORT:8099]/api/health"
+watchdog: http://[HOST]:[PORT:8099]/api/health
