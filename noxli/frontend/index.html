@@ -1522,21 +1522,33 @@ async function loadMonitorStatus() {
   }
 }
 
+function stopAudioPreview() {
+  const audio = document.getElementById('monitorAudio');
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  document.getElementById('monitorListenBtn').textContent = 'Listen';
+  audioPlaying = false;
+}
+
 function toggleAudioPreview() {
   const audio = document.getElementById('monitorAudio');
   const btn = document.getElementById('monitorListenBtn');
   if (audioPlaying) {
-    audio.pause();
-    audio.removeAttribute('src');
-    audio.load();
-    btn.textContent = 'Listen';
-    audioPlaying = false;
+    stopAudioPreview();
   } else {
     const base = window.INGRESS_ENTRY || '';
     audio.src = base + '/api/detection/audio';
+    // Stop retrying on error
+    audio.onerror = () => {
+      document.getElementById('monitorError').style.display = 'block';
+      document.getElementById('monitorError').textContent = 'Audio stream failed — is detection running?';
+      stopAudioPreview();
+    };
     audio.play().catch(e => {
       document.getElementById('monitorError').style.display = 'block';
       document.getElementById('monitorError').textContent = 'Audio playback failed: ' + e.message;
+      stopAudioPreview();
     });
     btn.textContent = 'Stop Listening';
     audioPlaying = true;

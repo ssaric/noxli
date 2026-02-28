@@ -16,11 +16,30 @@ from . import audio_stream, db, ha
 from contextlib import asynccontextmanager
 
 
+async def _resolve_stream_url(config: dict) -> str:
+    """Get a fresh stream URL, re-resolving HLS if needed (they expire)."""
+    rtsp_url = config.get("rtsp_url", "")
+    entity_id = config.get("entity_id", "")
+
+    # HLS supervisor URLs are ephemeral — always re-resolve from entity_id
+    if entity_id and "supervisor/" in rtsp_url:
+        print(f"[noxli] Re-resolving stream for {entity_id} (HLS URLs expire)")
+        fresh = await ha.get_stream_source(entity_id)
+        if fresh:
+            config["rtsp_url"] = fresh
+            _write_config(config)
+            print(f"[noxli] Fresh stream URL: {fresh}")
+            return fresh
+        print(f"[noxli] Re-resolve failed, using saved URL")
+
+    return rtsp_url
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # Auto-start detection if rtsp_url is configured
     config = _read_config()
-    rtsp_url = config.get("rtsp_url", "")
+    rtsp_url = await _resolve_stream_url(config)
     if rtsp_url:
         sensitivity = config.get("detection_sensitivity", 0.5)
         try:
@@ -139,7 +158,7 @@ async def set_config(body: ConfigUpdate):
 @app.post("/api/detection/start")
 async def start_detection():
     config = _read_config()
-    rtsp_url = config.get("rtsp_url", "")
+    rtsp_url = await _resolve_stream_url(config)
     if not rtsp_url:
         raise HTTPException(status_code=400, detail="No rtsp_url configured")
     sensitivity = config.get("detection_sensitivity", 0.5)
@@ -190,7 +209,7 @@ async def detection_debug():
 async def detection_audio():
     """Stream live audio from the configured source as MP3 for browser playback."""
     config = _read_config()
-    rtsp_url = config.get("rtsp_url", "")
+    rtsp_url = await _resolve_stream_url(config)
     if not rtsp_url:
         raise HTTPException(status_code=400, detail="No rtsp_url configured")
 
