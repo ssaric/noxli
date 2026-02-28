@@ -124,7 +124,14 @@ class DetectionLoop:
 
         # HTTP/HLS stream (e.g. HA supervisor HLS URL)
         if rtsp_url.startswith("http"):
-            return ["ffmpeg", "-i", rtsp_url, "-vn"] + out_args
+            cmd = ["ffmpeg"]
+            # Supervisor HLS URLs require Bearer token auth
+            if "supervisor/" in rtsp_url:
+                token = os.environ.get("SUPERVISOR_TOKEN", "")
+                if token:
+                    cmd += ["-headers", f"Authorization: Bearer {token}\r\n"]
+            cmd += ["-i", rtsp_url, "-vn"] + out_args
+            return cmd
 
         # File path or file:// URL
         source = rtsp_url.removeprefix("file://")
