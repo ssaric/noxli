@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 (2026-03-01)
+
+- fix: add ALTER TABLE migration for false_positive column on existing DBs
+
+
 ## 0.7.0 (2026-03-01)
 
 - feat: add event actions, sleep-end modal, and move sources to modal
