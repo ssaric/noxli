@@ -8,12 +8,13 @@ DB_PATH = Path("/data/db/events.db")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp  REAL    NOT NULL,
-    duration   REAL    DEFAULT 0,
-    confidence REAL    DEFAULT 0,
-    source     TEXT    DEFAULT '',
-    created_at TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp      REAL    NOT NULL,
+    duration       REAL    DEFAULT 0,
+    confidence     REAL    DEFAULT 0,
+    source         TEXT    DEFAULT '',
+    false_positive INTEGER DEFAULT 0,
+    created_at     TEXT    DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events (timestamp);
 

@@ -293,12 +293,17 @@ async def list_events(hours: float = Query(default=24, ge=0.1, le=168)):
     since = time.time() - hours * 3600
     with db.get_db() as conn:
         rows = conn.execute(
-            "SELECT id, timestamp, duration, confidence, source, created_at "
+            "SELECT id, timestamp, duration, confidence, source, false_positive, created_at "
             "FROM events WHERE timestamp >= ? ORDER BY timestamp ASC",
             (since,),
         ).fetchall()
+    events = []
+    for r in rows:
+        d = dict(r)
+        d["false_positive"] = bool(d.get("false_positive", 0))
+        events.append(d)
     return {
-        "events": [dict(r) for r in rows],
+        "events": events,
         "query": {"hours": hours, "since": since},
     }
 
@@ -314,11 +319,52 @@ async def create_event(body: EventCreate):
         )
         conn.commit()
         row = conn.execute(
-            "SELECT id, timestamp, duration, confidence, source, created_at "
+            "SELECT id, timestamp, duration, confidence, source, false_positive, created_at "
             "FROM events WHERE id = ?",
             (cur.lastrowid,),
         ).fetchone()
-    return dict(row)
+    d = dict(row)
+    d["false_positive"] = bool(d.get("false_positive", 0))
+    return d
+
+
+class EventUpdate(BaseModel):
+    false_positive: Optional[bool] = None
+
+
+@app.patch("/api/events/{event_id}")
+async def update_event(event_id: int, body: EventUpdate):
+    with db.get_db() as conn:
+        row = conn.execute("SELECT id FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Event not found")
+        updates = body.model_dump(exclude_none=True)
+        if not updates:
+            raise HTTPException(status_code=422, detail="No fields to update")
+        if "false_positive" in updates:
+            updates["false_positive"] = int(updates["false_positive"])
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        values = list(updates.values())
+        conn.execute(f"UPDATE events SET {set_clause} WHERE id = ?", (*values, event_id))
+        conn.commit()
+        row = conn.execute(
+            "SELECT id, timestamp, duration, confidence, source, false_positive, created_at "
+            "FROM events WHERE id = ?", (event_id,),
+        ).fetchone()
+    d = dict(row)
+    d["false_positive"] = bool(d.get("false_positive", 0))
+    return d
+
+
+@app.delete("/api/events/{event_id}")
+async def delete_event(event_id: int):
+    with db.get_db() as conn:
+        row = conn.execute("SELECT id FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Event not found")
+        conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
+        conn.commit()
+    return {"deleted": event_id}
 
 
 # --- Sleep Sessions ---

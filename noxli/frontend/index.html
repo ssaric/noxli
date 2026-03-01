@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Noxli — Stream Setup</title>
+  <title>Noxli</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg: #1c1c1c;
       --surface: #262626;
       --surface-hover: #2f2f2f;
+      --surface-raised: #303030;
       --border: #3a3a3a;
       --text: #e1e1e1;
       --text-dim: #999;
@@ -18,15 +19,21 @@
       --success: #66bb6a;
       --error: #ef5350;
       --warning: #ffa726;
+      --purple: #7e57c2;
+      --purple-light: #ce93d8;
+      --blue: #3949ab;
+      --blue-light: #7986cb;
       --radius: 8px;
+      --radius-lg: 14px;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding: 24px;
+      padding: 20px;
       max-width: 960px;
       margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* Header */
@@ -34,70 +41,26 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .header svg { flex-shrink: 0; }
-    .header h1 { font-size: 1.4rem; font-weight: 600; }
-    .header p { color: var(--text-dim); font-size: 0.85rem; margin-top: 2px; }
+    .header h1 { font-size: 1.3rem; font-weight: 600; }
+    .header p { color: var(--text-dim); font-size: 0.82rem; margin-top: 2px; }
+    .header-actions { margin-left: auto; display: flex; gap: 8px; }
 
     /* Status bar */
     .status {
       padding: 10px 14px;
       border-radius: var(--radius);
       font-size: 0.85rem;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       display: none;
     }
     .status.loading { display: block; background: var(--surface); color: var(--accent); border: 1px solid var(--border); }
     .status.success { display: block; background: #1b3a1b; color: var(--success); border: 1px solid #2d5a2d; }
     .status.error   { display: block; background: #3a1b1b; color: var(--error); border: 1px solid #5a2d2d; }
 
-    /* Camera grid */
-    .camera-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .camera-card {
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .camera-card:hover { background: var(--surface-hover); border-color: #555; }
-    .camera-card.selected { border-color: var(--accent); background: #1a2a35; }
-    .camera-card .name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
-    .camera-card .entity-id { color: var(--text-dim); font-size: 0.8rem; font-family: monospace; }
-    .camera-card .state-badge {
-      display: inline-block;
-      margin-top: 8px;
-      font-size: 0.75rem;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-    }
-    .state-badge.idle      { background: #2d5a2d; color: var(--success); }
-    .state-badge.streaming { background: #1a3a5a; color: var(--accent); }
-    .state-badge.recording { background: #5a3a1a; color: var(--warning); }
-    .state-badge.unknown   { background: #3a3a3a; color: var(--text-dim); }
-
-    /* Empty state */
-    .empty {
-      text-align: center;
-      padding: 48px 16px;
-      color: var(--text-dim);
-    }
-    .empty p { margin-top: 8px; font-size: 0.9rem; }
-
-    /* Actions */
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 24px;
-    }
+    /* Buttons */
     button {
       background: var(--surface);
       color: var(--text);
@@ -117,172 +80,26 @@
       font-weight: 600;
     }
     button.primary:hover { background: var(--accent-hover); }
-
-    /* Selected info panel */
-    .selected-info {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 24px;
-      display: none;
+    button.danger {
+      color: var(--error);
+      border-color: rgba(239,83,80,0.3);
     }
-    .selected-info.visible { display: block; }
-    .selected-info h3 { font-size: 0.9rem; margin-bottom: 10px; color: var(--accent); }
-    .selected-info .field { margin-bottom: 6px; font-size: 0.85rem; }
-    .selected-info .label { color: var(--text-dim); }
-    .selected-info .value { font-family: monospace; color: var(--text); word-break: break-all; }
-
-    /* Resolution method badge */
-    .method-badge {
-      display: inline-block;
-      font-size: 0.72rem;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-      background: #1a3a5a;
-      color: var(--accent);
-    }
-
-    /* No-audio warning */
-    .audio-warning {
-      background: #3a2a0a;
-      border: 1px solid #5a4a1a;
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      margin-bottom: 20px;
-      display: none;
-      font-size: 0.85rem;
-      color: var(--warning);
-    }
-    .audio-warning.visible { display: block; }
-    .audio-warning strong { display: block; margin-bottom: 6px; }
-    .audio-warning ul {
-      margin: 8px 0 0 18px;
-      color: var(--text);
-      font-size: 0.82rem;
-    }
-    .audio-warning ul li { margin-bottom: 4px; }
-    .audio-warning code {
-      background: var(--surface);
-      padding: 1px 5px;
-      border-radius: 3px;
-      font-size: 0.8rem;
-    }
-
-    /* Manual URL section */
-    .manual-section {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .manual-toggle {
-      width: 100%;
-      text-align: left;
-      padding: 12px 16px;
-      background: var(--surface);
+    button.danger:hover { background: rgba(239,83,80,0.1); }
+    button.ghost {
+      background: none;
       border: none;
-      border-radius: 0;
       color: var(--text-dim);
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      padding: 6px 10px;
     }
-    .manual-toggle:hover { background: var(--surface-hover); }
-    .manual-body {
-      padding: 16px;
-      display: none;
-      background: var(--bg);
-    }
-    .manual-body.open { display: block; }
-    .manual-body .input-row {
-      display: flex;
-      gap: 10px;
-    }
-    .manual-body input {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: var(--radius);
-      font-family: monospace;
-      font-size: 0.85rem;
-    }
-    .manual-body input::placeholder { color: #666; }
-    .manual-body input:focus { outline: none; border-color: var(--accent); }
-
-    /* Settings section */
-    .settings-section {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-top: 12px;
-    }
-    .settings-toggle {
-      width: 100%;
-      text-align: left;
-      padding: 12px 16px;
-      background: var(--surface);
-      border: none;
-      border-radius: 0;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .settings-toggle:hover { background: var(--surface-hover); }
-    .settings-body {
-      padding: 16px;
-      display: none;
-      background: var(--bg);
-    }
-    .settings-body.open { display: block; }
-    .settings-field {
-      margin-bottom: 16px;
-    }
-    .settings-field label {
-      display: block;
-      font-size: 0.8rem;
-      color: var(--text-dim);
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    .settings-field input[type="text"],
-    .settings-field select {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: var(--radius);
-      font-size: 0.85rem;
-    }
-    .settings-field input[type="text"]:focus,
-    .settings-field select:focus { outline: none; border-color: var(--accent); }
-    .settings-field select { cursor: pointer; }
-    .slider-row {
+    button.ghost:hover { color: var(--text); background: var(--surface-hover); }
+    button.icon-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
       display: flex;
       align-items: center;
-      gap: 12px;
-    }
-    .slider-row input[type="range"] {
-      flex: 1;
-      accent-color: var(--accent);
-    }
-    .slider-value {
-      font-family: monospace;
-      font-size: 0.85rem;
-      min-width: 2.5em;
-      text-align: right;
-      color: var(--accent);
-    }
-    .settings-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 4px;
+      justify-content: center;
+      border-radius: 50%;
     }
 
     /* Timeline */
@@ -291,7 +108,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .timeline-header {
       display: flex;
@@ -310,10 +127,11 @@
     .timeline-container { position: relative; }
     .timeline-bar {
       position: relative;
-      height: 32px;
+      height: 36px;
       background: var(--bg);
-      border-radius: 4px;
+      border-radius: 6px;
       overflow: hidden;
+      cursor: crosshair;
     }
     .timeline-now {
       position: absolute;
@@ -330,30 +148,37 @@
       bottom: 0;
       background: var(--error);
       opacity: 0.85;
-      border-radius: 1px;
+      border-radius: 2px;
       cursor: pointer;
       z-index: 1;
-      min-width: 3px;
+      min-width: 4px;
+      transition: opacity 0.1s, transform 0.1s;
     }
     .timeline-marker:hover {
       opacity: 1;
       z-index: 3;
+      transform: scaleY(1.1);
+    }
+    .timeline-marker.false-positive {
+      background: var(--text-dim);
+      opacity: 0.35;
     }
     .timeline-tooltip {
       display: none;
       position: absolute;
-      bottom: calc(100% + 6px);
+      bottom: calc(100% + 8px);
       left: 50%;
       transform: translateX(-50%);
       background: #111;
       color: var(--text);
       font-size: 0.75rem;
-      padding: 5px 8px;
-      border-radius: 4px;
+      padding: 6px 10px;
+      border-radius: 6px;
       white-space: nowrap;
       pointer-events: none;
       z-index: 10;
       border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .timeline-marker:hover .timeline-tooltip { display: block; }
     .timeline-labels {
@@ -380,8 +205,8 @@
       border-radius: 2px;
       z-index: 0;
     }
-    .timeline-sleep-band.nap   { background: #7e57c2; opacity: 0.35; }
-    .timeline-sleep-band.night { background: #3949ab; opacity: 0.35; }
+    .timeline-sleep-band.nap   { background: var(--purple); opacity: 0.25; }
+    .timeline-sleep-band.night { background: var(--blue); opacity: 0.25; }
 
     /* Sleep section */
     .sleep-section {
@@ -389,7 +214,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .sleep-section h2 {
       font-size: 1rem;
@@ -408,7 +233,7 @@
       transition: background 0.15s;
     }
     .sleep-btn.start {
-      background: #7e57c2;
+      background: var(--purple);
       color: #fff;
     }
     .sleep-btn.start:hover { background: #9575cd; }
@@ -431,15 +256,14 @@
     }
 
     /* Chip groups */
-    .chip-group {
-      margin-bottom: 10px;
-    }
+    .chip-group { margin-bottom: 10px; }
     .chip-group-label {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-dim);
       margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      font-weight: 500;
     }
     .chip-row {
       display: flex;
@@ -459,17 +283,17 @@
     }
     .chip:hover { border-color: #666; color: var(--text); }
     .chip.active {
-      border-color: #7e57c2;
-      background: #7e57c220;
-      color: #ce93d8;
+      border-color: var(--purple);
+      background: rgba(126,87,194,0.12);
+      color: var(--purple-light);
     }
     .chip.active.type-night {
-      border-color: #3949ab;
-      background: #3949ab20;
-      color: #7986cb;
+      border-color: var(--blue);
+      background: rgba(57,73,171,0.12);
+      color: var(--blue-light);
     }
 
-    /* Past session form */
+    /* Past session */
     .past-session-section {
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -502,9 +326,7 @@
       gap: 10px;
       margin-bottom: 10px;
     }
-    .past-session-body .form-field {
-      flex: 1;
-    }
+    .past-session-body .form-field { flex: 1; }
     .past-session-body label {
       display: block;
       font-size: 0.75rem;
@@ -529,6 +351,60 @@
       border-color: var(--accent);
     }
     .past-session-body textarea { resize: vertical; min-height: 50px; font-family: inherit; }
+
+    /* DateTime range picker */
+    .dt-range-picker {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .dt-picker-group {
+      flex: 1;
+      min-width: 140px;
+    }
+    .dt-picker-group label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .dt-input-row {
+      display: flex;
+      gap: 4px;
+    }
+    .dt-input-row input[type="date"],
+    .dt-input-row input[type="time"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+    .dt-input-row input[type="date"] { flex: 1.2; }
+    .dt-input-row input[type="time"] { flex: 0.8; }
+    .dt-input-row input:focus { outline: none; border-color: var(--accent); }
+    .dt-range-arrow {
+      color: var(--text-dim);
+      font-size: 1.2rem;
+      padding-top: 16px;
+      flex-shrink: 0;
+    }
+    /* Quick duration chips for past sessions */
+    .dt-quick-durations {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .dt-quick-durations .chip {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
 
     /* Session list */
     .session-list { margin-top: 14px; }
@@ -558,8 +434,8 @@
       text-transform: uppercase;
       flex-shrink: 0;
     }
-    .session-type-badge.nap   { background: #7e57c220; color: #ce93d8; }
-    .session-type-badge.night { background: #3949ab20; color: #7986cb; }
+    .session-type-badge.nap   { background: rgba(126,87,194,0.12); color: var(--purple-light); }
+    .session-type-badge.night { background: rgba(57,73,171,0.12); color: var(--blue-light); }
     .session-time { color: var(--text); white-space: nowrap; }
     .session-duration { color: var(--text-dim); white-space: nowrap; }
     .session-method { color: var(--text-dim); font-style: italic; }
@@ -585,7 +461,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .monitor-section h2 {
       font-size: 1rem;
@@ -644,18 +520,9 @@
       padding: 2px 4px;
       border-radius: 3px;
     }
-    .monitor-feed .chunk-row.cry {
-      background: rgba(239, 83, 80, 0.15);
-    }
-    .monitor-feed .chunk-time {
-      color: var(--text-dim);
-      flex-shrink: 0;
-      width: 65px;
-    }
-    .monitor-feed .chunk-level {
-      flex-shrink: 0;
-      width: 80px;
-    }
+    .monitor-feed .chunk-row.cry { background: rgba(239, 83, 80, 0.15); }
+    .monitor-feed .chunk-time { color: var(--text-dim); flex-shrink: 0; width: 65px; }
+    .monitor-feed .chunk-level { flex-shrink: 0; width: 80px; }
     .monitor-feed .chunk-level-bar {
       display: inline-block;
       height: 10px;
@@ -670,12 +537,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .monitor-feed .chunk-cry {
-      flex-shrink: 0;
-      width: 50px;
-      text-align: right;
-      font-weight: 600;
-    }
+    .monitor-feed .chunk-cry { flex-shrink: 0; width: 50px; text-align: right; font-weight: 600; }
     .monitor-feed .chunk-cry.high { color: var(--error); }
     .monitor-feed .chunk-cry.low { color: var(--text-dim); }
     .monitor-feed .chunk-row.dim { opacity: 0.35; }
@@ -688,21 +550,366 @@
       white-space: pre-wrap;
       word-break: break-all;
     }
+
+    /* ========== MODAL / OVERLAY ========== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open {
+      display: flex;
+      animation: fadeIn 0.15s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .modal-sheet {
+      background: var(--surface);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      width: 100%;
+      max-width: 540px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 0;
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: #555;
+      border-radius: 2px;
+      margin: 10px auto 0;
+    }
+    .modal-header {
+      padding: 14px 20px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .modal-body {
+      padding: 16px 20px 24px;
+    }
+
+    /* Full-screen modal for sources */
+    .modal-full {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 100;
+      display: none;
+      overflow-y: auto;
+    }
+    .modal-full.open { display: block; animation: fadeIn 0.15s ease; }
+    .modal-full-header {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 2;
+    }
+    .modal-full-header h2 { font-size: 1.1rem; font-weight: 600; flex: 1; }
+    .modal-full-body { padding: 20px; max-width: 960px; margin: 0 auto; }
+
+    /* Event action sheet */
+    .event-detail-row {
+      display: flex;
+      gap: 16px;
+      padding: 10px 0;
+      font-size: 0.9rem;
+    }
+    .event-detail-label { color: var(--text-dim); min-width: 80px; }
+    .event-detail-value { color: var(--text); font-family: monospace; }
+    .event-actions-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .event-action-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+    }
+    .event-action-btn:hover { background: var(--surface-hover); }
+    .event-action-btn .action-icon {
+      width: 24px;
+      text-align: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .event-action-btn.danger-action { color: var(--error); }
+    .event-action-btn.fp-action { color: var(--warning); }
+    .event-action-btn.undo-action { color: var(--success); }
+
+    /* Sleep end modal */
+    .sleep-end-section {
+      margin-bottom: 16px;
+    }
+    .sleep-end-section .chip-group-label {
+      margin-bottom: 8px;
+    }
+    .sleep-end-summary {
+      background: var(--bg);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .sleep-end-summary .duration {
+      font-family: monospace;
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .sleep-end-summary .time-range {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+    .sleep-end-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .sleep-end-actions button {
+      flex: 1;
+      padding: 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    /* Camera grid (in sources modal) */
+    .camera-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .camera-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .camera-card:hover { background: var(--surface-hover); border-color: #555; }
+    .camera-card.selected { border-color: var(--accent); background: #1a2a35; }
+    .camera-card .name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .camera-card .entity-id { color: var(--text-dim); font-size: 0.8rem; font-family: monospace; }
+    .camera-card .state-badge {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .state-badge.idle      { background: #2d5a2d; color: var(--success); }
+    .state-badge.streaming { background: #1a3a5a; color: var(--accent); }
+    .state-badge.recording { background: #5a3a1a; color: var(--warning); }
+    .state-badge.unknown   { background: #3a3a3a; color: var(--text-dim); }
+
+    /* Selected info panel (in sources modal) */
+    .selected-info {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .selected-info.visible { display: block; }
+    .selected-info h3 { font-size: 0.9rem; margin-bottom: 10px; color: var(--accent); }
+    .selected-info .field { margin-bottom: 6px; font-size: 0.85rem; }
+    .selected-info .label { color: var(--text-dim); }
+    .selected-info .value { font-family: monospace; color: var(--text); word-break: break-all; }
+    .method-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      background: #1a3a5a;
+      color: var(--accent);
+    }
+
+    /* Audio warning (in sources modal) */
+    .audio-warning {
+      background: #3a2a0a;
+      border: 1px solid #5a4a1a;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: none;
+      font-size: 0.85rem;
+      color: var(--warning);
+    }
+    .audio-warning.visible { display: block; }
+    .audio-warning strong { display: block; margin-bottom: 6px; }
+    .audio-warning ul { margin: 8px 0 0 18px; color: var(--text); font-size: 0.82rem; }
+    .audio-warning ul li { margin-bottom: 4px; }
+    .audio-warning code { background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 0.8rem; }
+
+    /* Manual URL / Settings in sources modal */
+    .collapsible-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .collapsible-toggle {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: none;
+      border-radius: 0;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .collapsible-toggle:hover { background: var(--surface-hover); }
+    .collapsible-body {
+      padding: 16px;
+      display: none;
+      background: var(--bg);
+    }
+    .collapsible-body.open { display: block; }
+    .collapsible-body .input-row { display: flex; gap: 10px; }
+    .collapsible-body input[type="text"],
+    .collapsible-body select {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    .collapsible-body input[type="text"]::placeholder { color: #666; }
+    .collapsible-body input[type="text"]:focus,
+    .collapsible-body select:focus { outline: none; border-color: var(--accent); }
+
+    /* Settings fields */
+    .settings-field { margin-bottom: 16px; }
+    .settings-field label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .settings-field input[type="text"],
+    .settings-field select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+    }
+    .settings-field input[type="text"]:focus,
+    .settings-field select:focus { outline: none; border-color: var(--accent); }
+    .slider-row { display: flex; align-items: center; gap: 12px; }
+    .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .slider-value {
+      font-family: monospace;
+      font-size: 0.85rem;
+      min-width: 2.5em;
+      text-align: right;
+      color: var(--accent);
+    }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--text-dim);
+    }
+    .empty p { margin-top: 8px; font-size: 0.9rem; }
+
+    /* Source summary bar */
+    .source-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .source-bar:hover { background: var(--surface-hover); }
+    .source-bar .source-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .source-bar .source-dot.inactive { background: #666; }
+    .source-bar .source-label { flex: 1; color: var(--text); }
+    .source-bar .source-label span { color: var(--text-dim); font-family: monospace; font-size: 0.8rem; margin-left: 8px; }
+    .source-bar .source-edit { color: var(--accent); font-size: 0.8rem; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
       <circle cx="12" cy="13" r="4"/>
     </svg>
     <div>
-      <h1>Noxli — Stream Setup</h1>
-      <p>Select an audio stream source from Home Assistant or enter a URL manually</p>
+      <h1>Noxli</h1>
+      <p>Baby sleep monitor</p>
     </div>
   </div>
 
+  <div id="status" class="status"></div>
+
+  <!-- Source summary bar — click to open sources modal -->
+  <div id="sourceBar" class="source-bar" onclick="openSourcesModal()">
+    <div class="source-dot" id="sourceDot"></div>
+    <div class="source-label" id="sourceLabel">No source configured<span></span></div>
+    <div class="source-edit">Configure</div>
+  </div>
+
+  <!-- Timeline -->
   <div id="timelineSection" class="timeline-section">
     <div class="timeline-header">
       <h2>Last 24 Hours</h2>
@@ -717,6 +924,7 @@
     <div id="timelineEmpty" class="timeline-empty" style="display:none">No events in the last 24 hours</div>
   </div>
 
+  <!-- Sleep Tracking -->
   <div id="sleepSection" class="sleep-section">
     <h2>Sleep Tracking</h2>
 
@@ -768,14 +976,33 @@
       </button>
       <div id="pastSessionBody" class="past-session-body">
         <input type="hidden" id="editSessionId" value="">
-        <div class="form-row">
-          <div class="form-field">
+        <!-- Date/time range picker -->
+        <div class="dt-range-picker" style="margin-bottom: 12px;">
+          <div class="dt-picker-group">
             <label>Start</label>
-            <input type="datetime-local" id="psStart">
+            <div class="dt-input-row">
+              <input type="date" id="psStartDate">
+              <input type="time" id="psStartTime" step="300">
+            </div>
           </div>
-          <div class="form-field">
+          <div class="dt-range-arrow">&#8594;</div>
+          <div class="dt-picker-group">
             <label>End</label>
-            <input type="datetime-local" id="psEnd">
+            <div class="dt-input-row">
+              <input type="date" id="psEndDate">
+              <input type="time" id="psEndTime" step="300">
+            </div>
+          </div>
+        </div>
+        <div class="chip-group" style="margin-bottom: 10px;">
+          <div class="chip-group-label">Quick duration (from start)</div>
+          <div class="dt-quick-durations">
+            <span class="chip" onclick="setQuickDuration(30)">30m</span>
+            <span class="chip" onclick="setQuickDuration(45)">45m</span>
+            <span class="chip" onclick="setQuickDuration(60)">1h</span>
+            <span class="chip" onclick="setQuickDuration(90)">1.5h</span>
+            <span class="chip" onclick="setQuickDuration(120)">2h</span>
+            <span class="chip" onclick="setQuickDuration(180)">3h</span>
           </div>
         </div>
         <div class="form-row">
@@ -786,7 +1013,7 @@
           <div class="form-field">
             <label>Method</label>
             <select id="psMethod">
-              <option value="">—</option>
+              <option value="">---</option>
               <option value="nursing">Nursing</option>
               <option value="rocking">Rocking</option>
               <option value="laying_down">Laying down</option>
@@ -797,7 +1024,7 @@
           </div>
           <div class="form-field">
             <label>Time to sleep (min)</label>
-            <input type="number" id="psTTS" min="0" max="120" placeholder="—">
+            <input type="number" id="psTTS" min="0" max="120" placeholder="---">
           </div>
         </div>
         <div class="form-row">
@@ -836,81 +1063,158 @@
     <div id="monitorError" class="monitor-error" style="display:none"></div>
   </div>
 
-  <div id="status" class="status"></div>
-
-  <div class="actions">
-    <button onclick="loadCameras()">Refresh Sources</button>
-    <button id="confirmBtn" class="primary" disabled onclick="confirmSelection()">Confirm Selection</button>
-  </div>
-
-  <div id="cameraGrid" class="camera-grid"></div>
-  <div id="emptyState" class="empty" style="display:none">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-    <p>No stream sources found in Home Assistant</p>
-  </div>
-
-  <div id="selectedInfo" class="selected-info">
-    <h3>Selected Source</h3>
-    <div class="field"><span class="label">Entity: </span><span id="selEntity" class="value"></span></div>
-    <div class="field"><span class="label">Stream URL: </span><span id="selUrl" class="value">—</span></div>
-    <div class="field" id="selMethodRow" style="display:none"><span class="label">Resolved via: </span><span id="selMethod" class="method-badge"></span></div>
-  </div>
-
-  <div id="audioWarning" class="audio-warning">
-    <strong>Audio may not be available</strong>
-    This stream was resolved via HA's HLS proxy, which typically provides video only (no audio track).
-    Baby cry detection requires audio. To get audio working:
-    <ul>
-      <li>Install the <strong>Noxli integration</strong> in HA (Settings &rarr; Integrations &rarr; Add &rarr; Noxli) to expose the camera's native RTSP URL</li>
-      <li>Or enter the camera's RTSP URL manually below (e.g. <code>rtsp://user:pass@ip:554/stream1</code>)</li>
-    </ul>
-  </div>
-
-  <div class="manual-section">
-    <button class="manual-toggle" onclick="toggleManual()">
-      <span>Manual Stream URL</span>
-      <span id="manualArrow">&#9654;</span>
-    </button>
-    <div id="manualBody" class="manual-body">
-      <div class="input-row">
-        <input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.x:554/stream">
-        <button onclick="saveManualUrl()">Save</button>
+  <!-- ======= EVENT ACTION MODAL (bottom sheet) ======= -->
+  <div id="eventModal" class="modal-overlay" onclick="if(event.target===this)closeEventModal()">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3>Event Details</h3>
+        <button class="ghost" onclick="closeEventModal()">Close</button>
+      </div>
+      <div class="modal-body" id="eventModalBody">
+        <!-- Filled dynamically -->
       </div>
     </div>
   </div>
 
-  <div class="settings-section">
-    <button class="settings-toggle" onclick="toggleSettings()">
-      <span>Settings</span>
-      <span id="settingsArrow">&#9654;</span>
-    </button>
-    <div id="settingsBody" class="settings-body">
-      <div class="settings-field">
-        <label>Detection Sensitivity</label>
-        <div class="slider-row">
-          <input id="settingSensitivity" type="range" min="0.1" max="1.0" step="0.1" value="0.5">
-          <span id="sensitivityValue" class="slider-value">0.5</span>
+  <!-- ======= SLEEP END MODAL (bottom sheet) ======= -->
+  <div id="sleepEndModal" class="modal-overlay" onclick="if(event.target===this)closeSleepEndModal()">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3>Baby Woke Up</h3>
+        <button class="ghost" onclick="closeSleepEndModal()">Cancel</button>
+      </div>
+      <div class="modal-body">
+        <div class="sleep-end-summary" id="sleepEndSummary">
+          <div class="duration" id="sleepEndDuration">--:--:--</div>
+          <div class="time-range" id="sleepEndRange">--</div>
+        </div>
+
+        <div class="sleep-end-section">
+          <div class="chip-group-label">How long to fall asleep?</div>
+          <div class="chip-row" id="endChipTTS">
+            <span class="chip" data-value="5" onclick="selectEndChip('tts',this)">5 min</span>
+            <span class="chip" data-value="10" onclick="selectEndChip('tts',this)">10 min</span>
+            <span class="chip" data-value="15" onclick="selectEndChip('tts',this)">15 min</span>
+            <span class="chip" data-value="20" onclick="selectEndChip('tts',this)">20 min</span>
+            <span class="chip" data-value="30" onclick="selectEndChip('tts',this)">30 min</span>
+            <span class="chip" data-value="45" onclick="selectEndChip('tts',this)">45 min</span>
+          </div>
+        </div>
+
+        <div class="sleep-end-section">
+          <div class="chip-group-label">Method used</div>
+          <div class="chip-row" id="endChipMethod">
+            <span class="chip" data-value="nursing" onclick="selectEndChip('method',this)">Nursing</span>
+            <span class="chip" data-value="rocking" onclick="selectEndChip('method',this)">Rocking</span>
+            <span class="chip" data-value="laying_down" onclick="selectEndChip('method',this)">Laying down</span>
+            <span class="chip" data-value="contact_nap" onclick="selectEndChip('method',this)">Contact nap</span>
+            <span class="chip" data-value="stroller" onclick="selectEndChip('method',this)">Stroller</span>
+            <span class="chip" data-value="car_ride" onclick="selectEndChip('method',this)">Car ride</span>
+          </div>
+        </div>
+
+        <div class="sleep-end-section">
+          <div class="chip-group-label">Session type</div>
+          <div class="chip-row" id="endChipType">
+            <span class="chip active" data-value="nap" onclick="selectEndChip('type',this)">Nap</span>
+            <span class="chip" data-value="night" onclick="selectEndChip('type',this)">Night</span>
+          </div>
+        </div>
+
+        <div class="sleep-end-actions">
+          <button onclick="closeSleepEndModal()">Cancel</button>
+          <button class="primary" onclick="confirmSleepEnd()">Confirm</button>
         </div>
       </div>
-      <div class="settings-field">
-        <label>MQTT Topic</label>
-        <input id="settingMqttTopic" type="text" placeholder="noxli/detection">
+    </div>
+  </div>
+
+  <!-- ======= SOURCES FULL-SCREEN MODAL ======= -->
+  <div id="sourcesModal" class="modal-full">
+    <div class="modal-full-header">
+      <button class="ghost" onclick="closeSourcesModal()" style="font-size:1.2rem">&#8592;</button>
+      <h2>Stream Sources</h2>
+      <button onclick="loadCameras()">Refresh</button>
+    </div>
+    <div class="modal-full-body">
+      <div id="sourcesStatus" class="status"></div>
+
+      <div id="cameraGrid" class="camera-grid"></div>
+      <div id="emptyState" class="empty" style="display:none">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+        <p>No stream sources found in Home Assistant</p>
       </div>
-      <div class="settings-field">
-        <label>Log Level</label>
-        <select id="settingLogLevel">
-          <option value="debug">debug</option>
-          <option value="info" selected>info</option>
-          <option value="warning">warning</option>
-          <option value="error">error</option>
-        </select>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button id="confirmBtn" class="primary" disabled onclick="confirmSelection()">Confirm Selection</button>
       </div>
-      <div class="settings-actions">
-        <button class="primary" onclick="saveSettings()">Save Settings</button>
+
+      <div id="selectedInfo" class="selected-info">
+        <h3>Selected Source</h3>
+        <div class="field"><span class="label">Entity: </span><span id="selEntity" class="value"></span></div>
+        <div class="field"><span class="label">Stream URL: </span><span id="selUrl" class="value">---</span></div>
+        <div class="field" id="selMethodRow" style="display:none"><span class="label">Resolved via: </span><span id="selMethod" class="method-badge"></span></div>
+      </div>
+
+      <div id="audioWarning" class="audio-warning">
+        <strong>Audio may not be available</strong>
+        This stream was resolved via HA's HLS proxy, which typically provides video only (no audio track).
+        Baby cry detection requires audio. To get audio working:
+        <ul>
+          <li>Install the <strong>Noxli integration</strong> in HA (Settings &rarr; Integrations &rarr; Add &rarr; Noxli) to expose the camera's native RTSP URL</li>
+          <li>Or enter the camera's RTSP URL manually below (e.g. <code>rtsp://user:pass@ip:554/stream1</code>)</li>
+        </ul>
+      </div>
+
+      <div class="collapsible-section">
+        <button class="collapsible-toggle" onclick="toggleManual()">
+          <span>Manual Stream URL</span>
+          <span id="manualArrow">&#9654;</span>
+        </button>
+        <div id="manualBody" class="collapsible-body">
+          <div class="input-row">
+            <input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.x:554/stream">
+            <button onclick="saveManualUrl()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="collapsible-section">
+        <button class="collapsible-toggle" onclick="toggleSettings()">
+          <span>Settings</span>
+          <span id="settingsArrow">&#9654;</span>
+        </button>
+        <div id="settingsBody" class="collapsible-body">
+          <div class="settings-field">
+            <label>Detection Sensitivity</label>
+            <div class="slider-row">
+              <input id="settingSensitivity" type="range" min="0.1" max="1.0" step="0.1" value="0.5">
+              <span id="sensitivityValue" class="slider-value">0.5</span>
+            </div>
+          </div>
+          <div class="settings-field">
+            <label>MQTT Topic</label>
+            <input id="settingMqttTopic" type="text" placeholder="noxli/detection">
+          </div>
+          <div class="settings-field">
+            <label>Log Level</label>
+            <select id="settingLogLevel">
+              <option value="debug">debug</option>
+              <option value="info" selected>info</option>
+              <option value="warning">warning</option>
+              <option value="error">error</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="primary" onclick="saveSettings()">Save Settings</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -933,6 +1237,37 @@ function clearStatus() {
   document.getElementById('status').className = 'status';
 }
 
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ===== SOURCE BAR =====
+
+function updateSourceBar() {
+  const dot = document.getElementById('sourceDot');
+  const label = document.getElementById('sourceLabel');
+  if (selectedEntity) {
+    dot.className = 'source-dot';
+    label.innerHTML = 'Source: <span>' + esc(selectedEntity) + '</span>';
+  } else {
+    dot.className = 'source-dot inactive';
+    label.innerHTML = 'No source configured';
+  }
+}
+
+// ===== SOURCES MODAL =====
+
+function openSourcesModal() {
+  document.getElementById('sourcesModal').classList.add('open');
+  loadCameras();
+}
+
+function closeSourcesModal() {
+  document.getElementById('sourcesModal').classList.remove('open');
+}
+
 function stateBadgeClass(state) {
   if (state === 'idle') return 'idle';
   if (state === 'streaming') return 'streaming';
@@ -941,19 +1276,23 @@ function stateBadgeClass(state) {
 }
 
 async function loadCameras() {
-  setStatus('Discovering stream sources...', 'loading');
+  const status = document.getElementById('sourcesStatus');
+  status.textContent = 'Discovering stream sources...';
+  status.className = 'status loading';
   try {
     const resp = await api('/api/cameras');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     renderCameras(data.cameras || []);
     if (data.cameras && data.cameras.length > 0) {
-      clearStatus();
+      status.className = 'status';
     } else {
-      setStatus('No stream sources found — add a camera or media player in HA, or use manual URL below', 'loading');
+      status.textContent = 'No sources found --- use manual URL below';
+      status.className = 'status loading';
     }
   } catch (e) {
-    setStatus('Failed to discover sources: ' + e.message, 'error');
+    status.textContent = 'Failed to discover sources: ' + e.message;
+    status.className = 'status error';
     renderCameras([]);
   }
 }
@@ -961,14 +1300,12 @@ async function loadCameras() {
 function renderCameras(cameras) {
   const grid = document.getElementById('cameraGrid');
   const empty = document.getElementById('emptyState');
-
   if (cameras.length === 0) {
     grid.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
-
   grid.innerHTML = cameras.map(c => `
     <div class="camera-card${c.entity_id === selectedEntity ? ' selected' : ''}"
          onclick="selectCamera('${c.entity_id}')">
@@ -980,23 +1317,17 @@ function renderCameras(cameras) {
   `).join('');
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
 function selectCamera(entityId) {
   selectedEntity = entityId;
   document.querySelectorAll('.camera-card').forEach(card => {
     card.classList.toggle('selected', card.querySelector('.entity-id').textContent === entityId);
   });
   document.getElementById('confirmBtn').disabled = false;
-
   const info = document.getElementById('selectedInfo');
   info.classList.add('visible');
   document.getElementById('selEntity').textContent = entityId;
-  document.getElementById('selUrl').textContent = '— click Confirm to resolve —';
+  document.getElementById('selUrl').textContent = '--- click Confirm to resolve ---';
+  updateSourceBar();
 }
 
 const METHOD_LABELS = {
@@ -1012,51 +1343,31 @@ async function confirmSelection() {
   const btn = document.getElementById('confirmBtn');
   btn.disabled = true;
   btn.textContent = 'Resolving...';
-  setStatus('Resolving stream source for ' + selectedEntity + '...', 'loading');
-
-  // Hide previous warning
   document.getElementById('audioWarning').classList.remove('visible');
 
   try {
-    const resp = await api('/api/cameras/' + encodeURIComponent(selectedEntity) + '/stream_source', {
-      method: 'POST'
-    });
+    const resp = await api('/api/cameras/' + encodeURIComponent(selectedEntity) + '/stream_source', { method: 'POST' });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.detail || 'HTTP ' + resp.status);
     }
     const data = await resp.json();
     document.getElementById('selUrl').textContent = data.rtsp_url;
-
-    // Show resolution method
     if (data.method) {
-      const methodRow = document.getElementById('selMethodRow');
-      const methodEl = document.getElementById('selMethod');
-      methodEl.textContent = METHOD_LABELS[data.method] || data.method;
-      methodRow.style.display = '';
+      document.getElementById('selMethodRow').style.display = '';
+      document.getElementById('selMethod').textContent = METHOD_LABELS[data.method] || data.method;
     }
-
-    // Show no-audio warning for HLS-only resolution
     if (data.has_audio === false) {
       document.getElementById('audioWarning').classList.add('visible');
-      setStatus('Stream configured (video-only — no audio)', 'loading');
-      // Auto-open manual section as alternative
       const mb = document.getElementById('manualBody');
-      if (!mb.classList.contains('open')) {
-        mb.classList.add('open');
-        document.getElementById('manualArrow').innerHTML = '&#9660;';
-      }
-    } else {
-      setStatus('Stream configured: ' + data.rtsp_url, 'success');
+      if (!mb.classList.contains('open')) { mb.classList.add('open'); document.getElementById('manualArrow').innerHTML = '&#9660;'; }
     }
+    setStatus('Stream configured', 'success');
+    updateSourceBar();
   } catch (e) {
-    setStatus('Could not resolve stream URL — enter the RTSP URL manually below', 'error');
-    // Auto-open manual section
+    setStatus('Could not resolve stream URL', 'error');
     const mb = document.getElementById('manualBody');
-    if (!mb.classList.contains('open')) {
-      mb.classList.add('open');
-      document.getElementById('manualArrow').innerHTML = '&#9660;';
-    }
+    if (!mb.classList.contains('open')) { mb.classList.add('open'); document.getElementById('manualArrow').innerHTML = '&#9660;'; }
   } finally {
     btn.disabled = false;
     btn.textContent = 'Confirm Selection';
@@ -1071,10 +1382,8 @@ function toggleManual() {
 }
 
 async function saveManualUrl() {
-  const input = document.getElementById('manualUrl');
-  const url = input.value.trim();
+  const url = document.getElementById('manualUrl').value.trim();
   if (!url) return;
-
   setStatus('Saving...', 'loading');
   try {
     const resp = await api('/api/config', {
@@ -1083,7 +1392,8 @@ async function saveManualUrl() {
       body: JSON.stringify({ rtsp_url: url })
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    setStatus('Manual RTSP URL saved: ' + url, 'success');
+    setStatus('Manual URL saved', 'success');
+    updateSourceBar();
   } catch (e) {
     setStatus('Failed to save: ' + e.message, 'error');
   }
@@ -1125,32 +1435,27 @@ async function loadCurrentConfig() {
     const resp = await api('/api/config');
     if (!resp.ok) return;
     const cfg = await resp.json();
-    if (cfg.rtsp_url) {
-      document.getElementById('manualUrl').value = cfg.rtsp_url;
-    }
+    if (cfg.rtsp_url) document.getElementById('manualUrl').value = cfg.rtsp_url;
     if (cfg.entity_id) {
       selectedEntity = cfg.entity_id;
       document.getElementById('selEntity').textContent = cfg.entity_id;
-      document.getElementById('selUrl').textContent = cfg.rtsp_url || '—';
+      document.getElementById('selUrl').textContent = cfg.rtsp_url || '---';
       document.getElementById('selectedInfo').classList.add('visible');
     }
-    // Populate settings fields
     if (cfg.detection_sensitivity != null) {
       document.getElementById('settingSensitivity').value = cfg.detection_sensitivity;
       document.getElementById('sensitivityValue').textContent = cfg.detection_sensitivity;
     }
-    if (cfg.mqtt_topic != null) {
-      document.getElementById('settingMqttTopic').value = cfg.mqtt_topic;
-    }
-    if (cfg.log_level) {
-      document.getElementById('settingLogLevel').value = cfg.log_level;
-    }
+    if (cfg.mqtt_topic != null) document.getElementById('settingMqttTopic').value = cfg.mqtt_topic;
+    if (cfg.log_level) document.getElementById('settingLogLevel').value = cfg.log_level;
+    updateSourceBar();
   } catch (e) { /* ignore */ }
 }
 
-// --- Timeline ---
+// ===== TIMELINE =====
 
 let _timelineSleepSessions = [];
+let _timelineEvents = [];
 
 async function loadTimeline() {
   try {
@@ -1161,7 +1466,8 @@ async function loadTimeline() {
     const evData = evResp.ok ? await evResp.json() : { events: [] };
     const slData = slResp.ok ? await slResp.json() : { sessions: [] };
     _timelineSleepSessions = slData.sessions || [];
-    renderTimeline(evData.events || [], _timelineSleepSessions);
+    _timelineEvents = evData.events || [];
+    renderTimeline(_timelineEvents, _timelineSleepSessions);
   } catch (e) { /* silent */ }
 }
 
@@ -1171,55 +1477,53 @@ function renderTimeline(events, sleepSessions) {
   const countEl = document.getElementById('timelineCount');
   const emptyEl = document.getElementById('timelineEmpty');
 
-  // Remove old markers and bands
   bar.querySelectorAll('.timeline-marker, .timeline-sleep-band').forEach(m => m.remove());
   labels.innerHTML = '';
 
-  countEl.textContent = events.length === 1
-    ? '1 event' : events.length + ' events';
+  const realEvents = events.filter(e => !e.false_positive);
+  countEl.textContent = realEvents.length === 1 ? '1 event' : realEvents.length + ' events';
   emptyEl.style.display = events.length === 0 && (!sleepSessions || sleepSessions.length === 0) ? 'block' : 'none';
 
   const now = Date.now() / 1000;
   const windowStart = now - 86400;
 
-  // Render sleep bands behind markers
+  // Sleep bands
   (sleepSessions || []).forEach(s => {
     const start = Math.max(s.start_time, windowStart);
     const end = s.end_time != null ? Math.min(s.end_time, now) : now;
     if (start >= now || end <= windowStart) return;
-    const leftPct = (start - windowStart) / 86400 * 100;
-    const widthPct = (end - start) / 86400 * 100;
     const band = document.createElement('div');
     band.className = 'timeline-sleep-band ' + (s.session_type || 'nap');
-    band.style.left = leftPct + '%';
-    band.style.width = widthPct + '%';
+    band.style.left = ((start - windowStart) / 86400 * 100) + '%';
+    band.style.width = ((end - start) / 86400 * 100) + '%';
     bar.appendChild(band);
   });
 
-  // Render cry markers
+  // Event markers
   events.forEach(ev => {
     const leftPct = (ev.timestamp - windowStart) / 86400 * 100;
-    const widthPct = Math.max(0.3, ev.duration / 86400 * 100);
+    const widthPct = Math.max(0.4, ev.duration / 86400 * 100);
     if (leftPct < 0 || leftPct > 100) return;
 
     const marker = document.createElement('div');
-    marker.className = 'timeline-marker';
+    marker.className = 'timeline-marker' + (ev.false_positive ? ' false-positive' : '');
     marker.style.left = leftPct + '%';
     marker.style.width = widthPct + '%';
+    marker.onclick = (e) => { e.stopPropagation(); openEventModal(ev); };
 
     const t = new Date(ev.timestamp * 1000);
     const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const conf = Math.round(ev.confidence * 100);
-    const dur = ev.duration > 0 ? ev.duration.toFixed(0) + 's' : '—';
+    const dur = ev.duration > 0 ? ev.duration.toFixed(0) + 's' : '---';
 
     const tip = document.createElement('div');
     tip.className = 'timeline-tooltip';
-    tip.textContent = timeStr + '  conf ' + conf + '%  dur ' + dur;
+    tip.textContent = timeStr + '  conf ' + conf + '%  dur ' + dur + (ev.false_positive ? '  [FP]' : '');
     marker.appendChild(tip);
     bar.appendChild(marker);
   });
 
-  // Hour labels — every 3 hours to avoid crowding
+  // Hour labels
   const step = 3 * 3600;
   const firstLabel = Math.ceil(windowStart / step) * step;
   for (let h = firstLabel; h < now; h += step) {
@@ -1233,7 +1537,87 @@ function renderTimeline(events, sleepSessions) {
   }
 }
 
-// --- Sleep tracking ---
+// ===== EVENT ACTION MODAL =====
+
+let _currentEvent = null;
+
+function openEventModal(ev) {
+  _currentEvent = ev;
+  const body = document.getElementById('eventModalBody');
+  const t = new Date(ev.timestamp * 1000);
+  const timeStr = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = t.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const conf = Math.round(ev.confidence * 100);
+  const dur = ev.duration > 0 ? ev.duration.toFixed(1) + 's' : '---';
+
+  const fpLabel = ev.false_positive ? 'Undo False Positive' : 'Mark as False Positive';
+  const fpClass = ev.false_positive ? 'undo-action' : 'fp-action';
+  const fpIcon = ev.false_positive ? '&#10003;' : '&#9888;';
+
+  body.innerHTML = `
+    <div class="event-detail-row">
+      <span class="event-detail-label">Time</span>
+      <span class="event-detail-value">${esc(dateStr)} ${esc(timeStr)}</span>
+    </div>
+    <div class="event-detail-row">
+      <span class="event-detail-label">Confidence</span>
+      <span class="event-detail-value">${conf}%</span>
+    </div>
+    <div class="event-detail-row">
+      <span class="event-detail-label">Duration</span>
+      <span class="event-detail-value">${esc(dur)}</span>
+    </div>
+    <div class="event-detail-row">
+      <span class="event-detail-label">Source</span>
+      <span class="event-detail-value">${esc(ev.source || '---')}</span>
+    </div>
+    ${ev.false_positive ? '<div class="event-detail-row"><span class="event-detail-label">Status</span><span class="event-detail-value" style="color:var(--warning)">False positive</span></div>' : ''}
+    <div class="event-actions-list">
+      <button class="event-action-btn ${fpClass}" onclick="toggleFalsePositive(${ev.id})">
+        <span class="action-icon">${fpIcon}</span>
+        ${fpLabel}
+      </button>
+      <button class="event-action-btn danger-action" onclick="deleteEvent(${ev.id})">
+        <span class="action-icon">&#10005;</span>
+        Delete Event
+      </button>
+    </div>
+  `;
+  document.getElementById('eventModal').classList.add('open');
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').classList.remove('open');
+  _currentEvent = null;
+}
+
+async function toggleFalsePositive(eventId) {
+  if (!_currentEvent) return;
+  const newVal = !_currentEvent.false_positive;
+  try {
+    await api('/api/events/' + eventId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ false_positive: newVal }),
+    });
+    closeEventModal();
+    loadTimeline();
+  } catch (e) {
+    setStatus('Failed to update event: ' + e.message, 'error');
+  }
+}
+
+async function deleteEvent(eventId) {
+  try {
+    await api('/api/events/' + eventId, { method: 'DELETE' });
+    closeEventModal();
+    loadTimeline();
+  } catch (e) {
+    setStatus('Failed to delete event: ' + e.message, 'error');
+  }
+}
+
+// ===== SLEEP TRACKING =====
 
 let activeSession = null;
 let sleepTimerInterval = null;
@@ -1248,9 +1632,9 @@ function fmtDuration(seconds) {
 function fmtTimeRange(startEpoch, endEpoch) {
   const opts = { hour: '2-digit', minute: '2-digit' };
   const s = new Date(startEpoch * 1000).toLocaleTimeString([], opts);
-  if (endEpoch == null) return s + ' — now';
+  if (endEpoch == null) return s + ' --- now';
   const e = new Date(endEpoch * 1000).toLocaleTimeString([], opts);
-  return s + ' — ' + e;
+  return s + ' --- ' + e;
 }
 
 function fmtMethodLabel(m) {
@@ -1270,8 +1654,6 @@ function updateSleepUI() {
     chips.style.display = 'block';
     const started = new Date(activeSession.start_time * 1000);
     document.getElementById('sleepStartedAt').textContent = 'started at ' + started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    // Restore chip state from active session
     restoreChips(activeSession);
     startSleepTimer();
   } else {
@@ -1299,17 +1681,14 @@ function stopSleepTimer() {
 }
 
 function restoreChips(session) {
-  // Type
   document.querySelectorAll('#chipType .chip').forEach(c => {
     c.classList.toggle('active', c.dataset.value === (session.session_type || 'nap'));
     if (c.dataset.value === 'night' && c.classList.contains('active')) c.classList.add('type-night');
     else c.classList.remove('type-night');
   });
-  // Method
   document.querySelectorAll('#chipMethod .chip').forEach(c => {
     c.classList.toggle('active', c.dataset.value === session.method);
   });
-  // TTS
   document.querySelectorAll('#chipTTS .chip').forEach(c => {
     c.classList.toggle('active', session.time_to_sleep_minutes != null && c.dataset.value === String(session.time_to_sleep_minutes));
   });
@@ -1319,17 +1698,11 @@ function selectChip(group, el) {
   const groupMap = { type: 'chipType', method: 'chipMethod', tts: 'chipTTS' };
   const container = document.getElementById(groupMap[group]);
   const wasActive = el.classList.contains('active');
-
-  // Deselect all in group
   container.querySelectorAll('.chip').forEach(c => { c.classList.remove('active', 'type-night'); });
-
-  // Toggle: if was active, leave deselected (nullable). Otherwise select.
   if (!wasActive) {
     el.classList.add('active');
     if (group === 'type' && el.dataset.value === 'night') el.classList.add('type-night');
   }
-
-  // Patch active session if there is one
   if (activeSession) {
     const payload = {};
     if (group === 'type') {
@@ -1342,11 +1715,8 @@ function selectChip(group, el) {
       const sel = container.querySelector('.chip.active');
       payload.time_to_sleep_minutes = sel ? parseInt(sel.dataset.value) : null;
     }
-    // Only send non-null values (PATCH exclude_none)
     const body = {};
-    for (const [k, v] of Object.entries(payload)) {
-      if (v != null) body[k] = v;
-    }
+    for (const [k, v] of Object.entries(payload)) { if (v != null) body[k] = v; }
     if (Object.keys(body).length > 0) {
       api('/api/sleep/' + activeSession.id, {
         method: 'PATCH',
@@ -1359,30 +1729,16 @@ function selectChip(group, el) {
 
 async function toggleSleep() {
   if (activeSession) {
-    // End session
-    try {
-      await api('/api/sleep/' + activeSession.id, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ end_time: Date.now() / 1000 }),
-      });
-      activeSession = null;
-      updateSleepUI();
-      loadSleepSessions();
-      loadTimeline();
-    } catch (e) { /* ignore */ }
+    // Show the sleep-end modal instead of immediately ending
+    openSleepEndModal();
   } else {
-    // Start session
     try {
       const resp = await api('/api/sleep', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      if (resp.status === 409) {
-        setStatus('A sleep session is already active', 'error');
-        return;
-      }
+      if (resp.status === 409) { setStatus('A sleep session is already active', 'error'); return; }
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       activeSession = await resp.json();
       updateSleepUI();
@@ -1390,6 +1746,90 @@ async function toggleSleep() {
     } catch (e) {
       setStatus('Failed to start sleep: ' + e.message, 'error');
     }
+  }
+}
+
+// ===== SLEEP END MODAL =====
+
+function openSleepEndModal() {
+  if (!activeSession) return;
+  const now = Date.now() / 1000;
+  const elapsed = now - activeSession.start_time;
+
+  document.getElementById('sleepEndDuration').textContent = fmtDuration(elapsed);
+
+  const startTime = new Date(activeSession.start_time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const endTime = new Date(now * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('sleepEndRange').textContent = startTime + ' --- ' + endTime;
+
+  // Restore existing selections from chips
+  const activeType = document.querySelector('#chipType .chip.active');
+  const activeMethod = document.querySelector('#chipMethod .chip.active');
+  const activeTTS = document.querySelector('#chipTTS .chip.active');
+
+  document.querySelectorAll('#endChipType .chip').forEach(c => {
+    c.classList.remove('active', 'type-night');
+    if (activeType && c.dataset.value === activeType.dataset.value) {
+      c.classList.add('active');
+      if (c.dataset.value === 'night') c.classList.add('type-night');
+    }
+    if (!activeType && c.dataset.value === 'nap') c.classList.add('active');
+  });
+  document.querySelectorAll('#endChipMethod .chip').forEach(c => {
+    c.classList.remove('active');
+    if (activeMethod && c.dataset.value === activeMethod.dataset.value) c.classList.add('active');
+  });
+  document.querySelectorAll('#endChipTTS .chip').forEach(c => {
+    c.classList.remove('active');
+    if (activeTTS && c.dataset.value === activeTTS.dataset.value) c.classList.add('active');
+  });
+
+  document.getElementById('sleepEndModal').classList.add('open');
+}
+
+function closeSleepEndModal() {
+  document.getElementById('sleepEndModal').classList.remove('open');
+}
+
+function selectEndChip(group, el) {
+  const groupMap = { type: 'endChipType', method: 'endChipMethod', tts: 'endChipTTS' };
+  const container = document.getElementById(groupMap[group]);
+  const wasActive = el.classList.contains('active');
+  container.querySelectorAll('.chip').forEach(c => { c.classList.remove('active', 'type-night'); });
+  if (!wasActive) {
+    el.classList.add('active');
+    if (group === 'type' && el.dataset.value === 'night') el.classList.add('type-night');
+  }
+}
+
+async function confirmSleepEnd() {
+  if (!activeSession) return;
+
+  // Gather selections from end modal
+  const typeChip = document.querySelector('#endChipType .chip.active');
+  const methodChip = document.querySelector('#endChipMethod .chip.active');
+  const ttsChip = document.querySelector('#endChipTTS .chip.active');
+
+  const payload = {
+    end_time: Date.now() / 1000,
+  };
+  if (typeChip) payload.session_type = typeChip.dataset.value;
+  if (methodChip) payload.method = methodChip.dataset.value;
+  if (ttsChip) payload.time_to_sleep_minutes = parseInt(ttsChip.dataset.value);
+
+  try {
+    await api('/api/sleep/' + activeSession.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    activeSession = null;
+    updateSleepUI();
+    closeSleepEndModal();
+    loadSleepSessions();
+    loadTimeline();
+  } catch (e) {
+    setStatus('Failed to end session: ' + e.message, 'error');
   }
 }
 
@@ -1437,7 +1877,7 @@ function renderSessionList(sessions) {
       ${wakes}
       <span class="session-actions">
         ${isActive ? '' : '<button onclick="editSession(' + s.id + ')">Edit</button>'}
-        <button onclick="deleteSession(${s.id})">Del</button>
+        <button class="danger" onclick="deleteSession(${s.id})">Del</button>
       </span>
     </div>`;
   }).join('');
@@ -1459,28 +1899,34 @@ async function deleteSession(id) {
 }
 
 function editSession(id) {
-  // Find session from rendered list (re-fetch for accuracy)
   api('/api/sleep?hours=168').then(r => r.json()).then(data => {
     const s = (data.sessions || []).find(x => x.id === id);
     if (!s) return;
     document.getElementById('editSessionId').value = id;
     document.getElementById('pastSessionLabel').textContent = 'Edit Session #' + id;
 
-    // Populate form
-    const toLocal = epoch => {
+    const toDate = epoch => {
       const d = new Date(epoch * 1000);
-      const off = d.getTimezoneOffset();
-      const local = new Date(d.getTime() - off * 60000);
-      return local.toISOString().slice(0, 16);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     };
-    document.getElementById('psStart').value = toLocal(s.start_time);
-    document.getElementById('psEnd').value = s.end_time ? toLocal(s.end_time) : '';
+    const toTime = epoch => {
+      const d = new Date(epoch * 1000);
+      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    };
+    document.getElementById('psStartDate').value = toDate(s.start_time);
+    document.getElementById('psStartTime').value = toTime(s.start_time);
+    if (s.end_time) {
+      document.getElementById('psEndDate').value = toDate(s.end_time);
+      document.getElementById('psEndTime').value = toTime(s.end_time);
+    } else {
+      document.getElementById('psEndDate').value = '';
+      document.getElementById('psEndTime').value = '';
+    }
     document.getElementById('psType').value = s.session_type || 'nap';
     document.getElementById('psMethod').value = s.method || '';
     document.getElementById('psTTS').value = s.time_to_sleep_minutes || '';
     document.getElementById('psNotes').value = s.notes || '';
 
-    // Open form
     const body = document.getElementById('pastSessionBody');
     if (!body.classList.contains('open')) {
       body.classList.add('open');
@@ -1492,8 +1938,10 @@ function editSession(id) {
 function cancelEditSession() {
   document.getElementById('editSessionId').value = '';
   document.getElementById('pastSessionLabel').textContent = 'Add Past Session';
-  document.getElementById('psStart').value = '';
-  document.getElementById('psEnd').value = '';
+  document.getElementById('psStartDate').value = '';
+  document.getElementById('psStartTime').value = '';
+  document.getElementById('psEndDate').value = '';
+  document.getElementById('psEndTime').value = '';
   document.getElementById('psType').value = 'nap';
   document.getElementById('psMethod').value = '';
   document.getElementById('psTTS').value = '';
@@ -1503,25 +1951,46 @@ function cancelEditSession() {
   document.getElementById('pastSessionArrow').innerHTML = '&#9654;';
 }
 
+function setQuickDuration(minutes) {
+  const startDate = document.getElementById('psStartDate').value;
+  const startTime = document.getElementById('psStartTime').value;
+  if (!startDate || !startTime) {
+    // Default to now minus duration
+    const now = new Date();
+    const start = new Date(now.getTime() - minutes * 60000);
+    document.getElementById('psStartDate').value = start.getFullYear() + '-' + String(start.getMonth()+1).padStart(2,'0') + '-' + String(start.getDate()).padStart(2,'0');
+    document.getElementById('psStartTime').value = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
+    document.getElementById('psEndDate').value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    document.getElementById('psEndTime').value = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    return;
+  }
+  const start = new Date(startDate + 'T' + startTime);
+  const end = new Date(start.getTime() + minutes * 60000);
+  document.getElementById('psEndDate').value = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
+  document.getElementById('psEndTime').value = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
+}
+
+function getPsDateTime(prefix) {
+  const date = document.getElementById(prefix + 'Date').value;
+  const time = document.getElementById(prefix + 'Time').value;
+  if (!date) return null;
+  const t = time || '00:00';
+  return new Date(date + 'T' + t).getTime() / 1000;
+}
+
 async function savePastSession() {
   const editId = document.getElementById('editSessionId').value;
-  const startVal = document.getElementById('psStart').value;
-  const endVal = document.getElementById('psEnd').value;
+  const startEpoch = getPsDateTime('psStart');
+  const endEpoch = getPsDateTime('psEnd');
   const typeVal = document.getElementById('psType').value;
   const methodVal = document.getElementById('psMethod').value;
   const ttsVal = document.getElementById('psTTS').value;
   const notesVal = document.getElementById('psNotes').value;
 
-  if (!startVal) { setStatus('Start time is required', 'error'); return; }
-  const startEpoch = new Date(startVal).getTime() / 1000;
-  const endEpoch = endVal ? new Date(endVal).getTime() / 1000 : null;
+  if (!startEpoch) { setStatus('Start time is required', 'error'); return; }
 
   if (editId) {
-    // PATCH existing
-    const payload = {
-      session_type: typeVal,
-      notes: notesVal,
-    };
+    const payload = { session_type: typeVal, notes: notesVal };
     if (endEpoch != null) payload.end_time = endEpoch;
     if (methodVal) payload.method = methodVal;
     if (ttsVal) payload.time_to_sleep_minutes = parseInt(ttsVal);
@@ -1538,12 +2007,7 @@ async function savePastSession() {
       loadTimeline();
     } catch (e) { setStatus('Update failed: ' + e.message, 'error'); }
   } else {
-    // POST new
-    const payload = {
-      start_time: startEpoch,
-      session_type: typeVal,
-      notes: notesVal,
-    };
+    const payload = { start_time: startEpoch, session_type: typeVal, notes: notesVal };
     if (endEpoch != null) payload.end_time = endEpoch;
     if (methodVal) payload.method = methodVal;
     if (ttsVal) payload.time_to_sleep_minutes = parseInt(ttsVal);
@@ -1570,7 +2034,7 @@ function togglePastSession() {
   if (!open) cancelEditSession();
 }
 
-// --- Detection Monitor ---
+// ===== DETECTION MONITOR =====
 
 let monitorPolling = null;
 let audioPlaying = false;
@@ -1586,7 +2050,7 @@ async function loadMonitorStatus() {
 
     if (data.running) {
       dot.className = 'monitor-dot active';
-      text.textContent = 'Running — ' + data.events_detected + ' events';
+      text.textContent = 'Running --- ' + data.events_detected + ' events';
     } else if (data.error || data.ffmpeg_error) {
       dot.className = 'monitor-dot error';
       text.textContent = 'Error';
@@ -1594,11 +2058,7 @@ async function loadMonitorStatus() {
       dot.className = 'monitor-dot';
       text.textContent = 'Stopped';
     }
-    if (data.chunks_processed > 0) {
-      countEl.textContent = data.chunks_processed + ' chunks';
-    } else {
-      countEl.textContent = '';
-    }
+    countEl.textContent = data.chunks_processed > 0 ? data.chunks_processed + ' chunks' : '';
   } catch (e) {
     document.getElementById('monitorStatusText').textContent = 'Unavailable';
   }
@@ -1621,10 +2081,9 @@ function toggleAudioPreview() {
   } else {
     const base = window.INGRESS_ENTRY || '';
     audio.src = base + '/api/detection/audio';
-    // Stop retrying on error
     audio.onerror = () => {
       document.getElementById('monitorError').style.display = 'block';
-      document.getElementById('monitorError').textContent = 'Audio stream failed — is detection running?';
+      document.getElementById('monitorError').textContent = 'Audio stream failed --- is detection running?';
       stopAudioPreview();
     };
     audio.play().catch(e => {
@@ -1687,7 +2146,7 @@ async function pollMonitorFeed() {
       const cryClass = cryPct >= 50 ? 'high' : 'low';
       const rowClass = c.detected ? 'chunk-row cry' : (c.silence ? 'chunk-row silent' : 'chunk-row');
       const relevant = RELEVANT_CLASSES.has(c.top_class);
-      const classLabel = c.silence ? 'Silence' : (c.top_class || '—');
+      const classLabel = c.silence ? 'Silence' : (c.top_class || '---');
       const dimClass = (!relevant && !c.detected) ? ' dim' : '';
       return `<div class="${rowClass}${dimClass}">
         <span class="chunk-time">${ts}</span>
@@ -1703,9 +2162,8 @@ async function pollMonitorFeed() {
   }
 }
 
-// Init
+// ===== INIT =====
 loadCurrentConfig();
-loadCameras();
 loadTimeline();
 loadSleepState();
 loadSleepSessions();
