@@ -678,6 +678,8 @@
     }
     .monitor-feed .chunk-cry.high { color: var(--error); }
     .monitor-feed .chunk-cry.low { color: var(--text-dim); }
+    .monitor-feed .chunk-row.dim { opacity: 0.35; }
+    .monitor-feed .chunk-row.silent .chunk-class { color: var(--text-dim); font-style: italic; }
     .monitor-error {
       color: var(--error);
       font-size: 0.82rem;
@@ -1671,17 +1673,26 @@ async function pollMonitorFeed() {
       return;
     }
 
+    const RELEVANT_CLASSES = new Set([
+      'Silence', 'Crying, sobbing', 'Baby cry, infant cry',
+      'Whimper', 'Screaming', 'Child speech, kid speaking',
+      'Babbling', 'Speech', 'Shout', 'Wail, moan',
+    ]);
+
     const rows = data.chunks.slice().reverse().map(c => {
       const t = new Date(c.time * 1000);
       const ts = t.toLocaleTimeString();
       const levelPct = Math.min(c.rms * 500, 100);
       const cryPct = Math.round(c.cry_confidence * 100);
       const cryClass = cryPct >= 50 ? 'high' : 'low';
-      const rowClass = c.detected ? 'chunk-row cry' : 'chunk-row';
-      return `<div class="${rowClass}">
+      const rowClass = c.detected ? 'chunk-row cry' : (c.silence ? 'chunk-row silent' : 'chunk-row');
+      const relevant = RELEVANT_CLASSES.has(c.top_class);
+      const classLabel = c.silence ? 'Silence' : (c.top_class || '—');
+      const dimClass = (!relevant && !c.detected) ? ' dim' : '';
+      return `<div class="${rowClass}${dimClass}">
         <span class="chunk-time">${ts}</span>
         <span class="chunk-level"><span class="chunk-level-bar" style="width:${levelPct}%"></span></span>
-        <span class="chunk-class">${c.top_class || '—'}</span>
+        <span class="chunk-class">${classLabel}</span>
         <span class="chunk-cry ${cryClass}">${cryPct}%</span>
       </div>`;
     });
