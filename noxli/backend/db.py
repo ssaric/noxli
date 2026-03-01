@@ -33,13 +33,28 @@ CREATE INDEX IF NOT EXISTS idx_sleep_end   ON sleep_sessions (end_time);
 """
 
 
+_MIGRATIONS = [
+    "ALTER TABLE events ADD COLUMN false_positive INTEGER DEFAULT 0",
+]
+
+
 @contextmanager
 def get_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
+    _run_migrations(conn)
     try:
         yield conn
     finally:
         conn.close()
+
+
+def _run_migrations(conn):
+    for sql in _MIGRATIONS:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # column already exists
