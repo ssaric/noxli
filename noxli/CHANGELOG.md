@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.2 (2026-03-01)
+
+- fix: mask RTSP credentials in all API responses to the browser
+
+
 ## 0.6.1 (2026-03-01)
 
 - fix: pin numpy<2 for tflite-runtime compatibility
