@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 (2026-03-01)
+
+- feat: add companion HA integration for camera RTSP URL resolution
+
+
 ## 0.5.4 (2026-02-28)
 
 - fix: use go2rtc RTSP proxy for camera audio (HLS is video-only)
