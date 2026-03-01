@@ -133,6 +133,43 @@
     .selected-info .label { color: var(--text-dim); }
     .selected-info .value { font-family: monospace; color: var(--text); word-break: break-all; }
 
+    /* Resolution method badge */
+    .method-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      background: #1a3a5a;
+      color: var(--accent);
+    }
+
+    /* No-audio warning */
+    .audio-warning {
+      background: #3a2a0a;
+      border: 1px solid #5a4a1a;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: none;
+      font-size: 0.85rem;
+      color: var(--warning);
+    }
+    .audio-warning.visible { display: block; }
+    .audio-warning strong { display: block; margin-bottom: 6px; }
+    .audio-warning ul {
+      margin: 8px 0 0 18px;
+      color: var(--text);
+      font-size: 0.82rem;
+    }
+    .audio-warning ul li { margin-bottom: 4px; }
+    .audio-warning code {
+      background: var(--surface);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+
     /* Manual URL section */
     .manual-section {
       border: 1px solid var(--border);
@@ -818,6 +855,17 @@
     <h3>Selected Source</h3>
     <div class="field"><span class="label">Entity: </span><span id="selEntity" class="value"></span></div>
     <div class="field"><span class="label">Stream URL: </span><span id="selUrl" class="value">—</span></div>
+    <div class="field" id="selMethodRow" style="display:none"><span class="label">Resolved via: </span><span id="selMethod" class="method-badge"></span></div>
+  </div>
+
+  <div id="audioWarning" class="audio-warning">
+    <strong>Audio may not be available</strong>
+    This stream was resolved via HA's HLS proxy, which typically provides video only (no audio track).
+    Baby cry detection requires audio. To get audio working:
+    <ul>
+      <li>Install the <strong>Noxli integration</strong> in HA (Settings &rarr; Integrations &rarr; Add &rarr; Noxli) to expose the camera's native RTSP URL</li>
+      <li>Or enter the camera's RTSP URL manually below (e.g. <code>rtsp://user:pass@ip:554/stream1</code>)</li>
+    </ul>
   </div>
 
   <div class="manual-section">
@@ -949,12 +997,23 @@ function selectCamera(entityId) {
   document.getElementById('selUrl').textContent = '— click Confirm to resolve —';
 }
 
+const METHOD_LABELS = {
+  entity_attribute: 'Entity Attribute',
+  noxli_integration: 'Noxli Integration',
+  expose_integration: 'Expose Integration',
+  go2rtc: 'go2rtc',
+  hls_websocket: 'HLS (video-only)',
+};
+
 async function confirmSelection() {
   if (!selectedEntity) return;
   const btn = document.getElementById('confirmBtn');
   btn.disabled = true;
   btn.textContent = 'Resolving...';
   setStatus('Resolving stream source for ' + selectedEntity + '...', 'loading');
+
+  // Hide previous warning
+  document.getElementById('audioWarning').classList.remove('visible');
 
   try {
     const resp = await api('/api/cameras/' + encodeURIComponent(selectedEntity) + '/stream_source', {
@@ -966,7 +1025,28 @@ async function confirmSelection() {
     }
     const data = await resp.json();
     document.getElementById('selUrl').textContent = data.rtsp_url;
-    setStatus('Stream configured: ' + data.rtsp_url, 'success');
+
+    // Show resolution method
+    if (data.method) {
+      const methodRow = document.getElementById('selMethodRow');
+      const methodEl = document.getElementById('selMethod');
+      methodEl.textContent = METHOD_LABELS[data.method] || data.method;
+      methodRow.style.display = '';
+    }
+
+    // Show no-audio warning for HLS-only resolution
+    if (data.has_audio === false) {
+      document.getElementById('audioWarning').classList.add('visible');
+      setStatus('Stream configured (video-only — no audio)', 'loading');
+      // Auto-open manual section as alternative
+      const mb = document.getElementById('manualBody');
+      if (!mb.classList.contains('open')) {
+        mb.classList.add('open');
+        document.getElementById('manualArrow').innerHTML = '&#9660;';
+      }
+    } else {
+      setStatus('Stream configured: ' + data.rtsp_url, 'success');
+    }
   } catch (e) {
     setStatus('Could not resolve stream URL — enter the RTSP URL manually below', 'error');
     // Auto-open manual section

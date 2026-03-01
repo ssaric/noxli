@@ -32,8 +32,9 @@ async def _resolve_stream_url(config: dict) -> str:
             return _resolved_url_cache["url"]
 
         print(f"[noxli] Re-resolving stream for {entity_id} (HLS URLs expire)")
-        fresh = await ha.get_stream_source(entity_id)
-        if fresh:
+        result = await ha.get_stream_source(entity_id)
+        if result:
+            fresh = result["url"]
             config["rtsp_url"] = fresh
             _write_config(config)
             _resolved_url_cache["url"] = fresh
@@ -118,8 +119,8 @@ async def list_cameras():
 
 @app.post("/api/cameras/{entity_id:path}/stream_source")
 async def resolve_stream_source(entity_id: str):
-    rtsp_url = await ha.get_stream_source(entity_id)
-    if not rtsp_url:
+    result = await ha.get_stream_source(entity_id)
+    if not result:
         raise HTTPException(
             status_code=404,
             detail=(
@@ -133,10 +134,15 @@ async def resolve_stream_source(entity_id: str):
     # Persist the selection
     config = _read_config()
     config["entity_id"] = entity_id
-    config["rtsp_url"] = rtsp_url
+    config["rtsp_url"] = result["url"]
     _write_config(config)
 
-    return {"entity_id": entity_id, "rtsp_url": rtsp_url}
+    return {
+        "entity_id": entity_id,
+        "rtsp_url": result["url"],
+        "method": result["method"],
+        "has_audio": result["has_audio"],
+    }
 
 
 @app.get("/api/config")

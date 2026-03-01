@@ -55,6 +55,23 @@ async def get_stream_entities() -> list[dict]:
         return []
 
 
+async def _try_noxli_integration(entity_id: str) -> str | None:
+    """Try our own Noxli companion integration."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{SUPERVISOR_URL}/noxli/stream/{entity_id}",
+                headers=_headers(),
+            )
+            if resp.status_code == 200:
+                url = resp.text.strip()
+                if url:
+                    return url
+        return None
+    except Exception:
+        return None
+
+
 async def _try_expose_integration(entity_id: str) -> str | None:
     """Try hass-expose-camera-stream-source custom integration."""
     try:
@@ -72,43 +89,64 @@ async def _try_expose_integration(entity_id: str) -> str | None:
         return None
 
 
-GO2RTC_RTSP = "rtsp://homeassistant:8554"
-
-
 async def _try_go2rtc(entity_id: str) -> str | None:
-    """Try to resolve a stream URL via go2rtc.
+    """Try to resolve a stream URL via a standalone go2rtc addon.
 
-    Prefer the camera's direct RTSP source if available.
-    Otherwise use go2rtc's RTSP proxy which includes audio
-    (unlike HA's HLS stream which is often video-only).
+    Discovers go2rtc addons via the Supervisor API, derives the addon
+    hostname, and uses its RTSP proxy which includes audio.
     """
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
+            # Discover installed addons via Supervisor API
             resp = await client.get(
-                f"{SUPERVISOR_URL}/go2rtc/api/streams",
+                "http://supervisor/addons",
                 headers=_headers(),
             )
             resp.raise_for_status()
-            streams = resp.json()
+            addons = resp.json().get("data", {}).get("addons", [])
 
-        # If go2rtc knows about this camera, check for a direct RTSP source
-        stream = streams.get(entity_id)
-        if stream:
-            producers = stream.get("producers", [])
-            for p in producers:
-                url = p.get("url", "")
-                if url.startswith(("rtsp://", "rtsps://")):
-                    _log(f"go2rtc has direct RTSP source for {entity_id}")
-                    return url
+        # Find go2rtc addon by slug pattern
+        go2rtc_addon = None
+        for addon in addons:
+            slug = addon.get("slug", "")
+            name = addon.get("name", "").lower()
+            if "go2rtc" in slug or "go2rtc" in name:
+                if addon.get("state") == "started":
+                    go2rtc_addon = addon
+                    break
 
-        # go2rtc is available — use its RTSP proxy (includes audio)
-        # go2rtc creates streams on-demand for HA camera entities
-        proxy_url = f"{GO2RTC_RTSP}/{entity_id}"
+        if not go2rtc_addon:
+            return None
+
+        # Derive addon hostname: slug with underscores/dots replaced by hyphens
+        slug = go2rtc_addon["slug"]
+        hostname = slug.replace("_", "-").replace(".", "-")
+        _log(f"Discovered go2rtc addon: {slug} (hostname: {hostname})")
+
+        # Check if go2rtc knows about this entity's stream
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"http://{hostname}:1984/api/streams")
+                if resp.status_code == 200:
+                    streams = resp.json()
+                    stream = streams.get(entity_id)
+                    if stream:
+                        producers = stream.get("producers", [])
+                        for p in producers:
+                            url = p.get("url", "")
+                            if url.startswith(("rtsp://", "rtsps://")):
+                                _log(f"go2rtc has direct RTSP source for {entity_id}")
+                                return url
+        except Exception:
+            pass
+
+        # Use go2rtc's RTSP proxy (creates streams on-demand for HA entities)
+        proxy_url = f"rtsp://{hostname}:8554/{entity_id}"
         _log(f"Using go2rtc RTSP proxy: {proxy_url}")
         return proxy_url
 
     except Exception as exc:
-        _log(f"go2rtc not available: {exc}")
+        _log(f"go2rtc discovery failed: {exc}")
         return None
 
 
@@ -155,10 +193,16 @@ async def _try_ws_stream(entity_id: str) -> str | None:
         return None
 
 
-async def get_stream_source(entity_id: str) -> str | None:
-    """Try every available method to resolve a stream URL."""
+async def get_stream_source(entity_id: str) -> dict | None:
+    """Try every available method to resolve a stream URL.
 
-    # 1 — entity state attributes
+    Returns a dict with keys:
+      - url: the stream URL
+      - method: resolution method name
+      - has_audio: whether the stream is expected to have audio
+    """
+
+    # 1 — entity state attributes (direct RTSP in attrs)
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
@@ -173,30 +217,36 @@ async def get_stream_source(entity_id: str) -> str | None:
                 val = attrs.get(attr)
                 if val and isinstance(val, str):
                     _log(f"Resolved {entity_id} via attribute '{attr}'")
-                    return val
+                    return {"url": val, "method": "entity_attribute", "has_audio": True}
 
             _log(f"No stream URL in attributes for {entity_id} "
                  f"(keys: {list(attrs.keys())})")
     except Exception as exc:
         _log(f"Failed to fetch state for {entity_id}: {exc}")
 
-    # 2 — expose-camera-stream-source custom integration
+    # 2 — Noxli companion integration
+    url = await _try_noxli_integration(entity_id)
+    if url:
+        _log(f"Resolved {entity_id} via Noxli integration")
+        return {"url": url, "method": "noxli_integration", "has_audio": True}
+
+    # 3 — expose-camera-stream-source custom integration
     url = await _try_expose_integration(entity_id)
     if url:
         _log(f"Resolved {entity_id} via expose-camera-stream-source")
-        return url
+        return {"url": url, "method": "expose_integration", "has_audio": True}
 
-    # 3 — go2rtc
+    # 4 — go2rtc standalone addon
     url = await _try_go2rtc(entity_id)
     if url:
         _log(f"Resolved {entity_id} via go2rtc")
-        return url
+        return {"url": url, "method": "go2rtc", "has_audio": True}
 
-    # 4 — WebSocket camera/stream (returns HLS URL)
+    # 5 — WebSocket camera/stream (returns HLS URL — video-only, no audio)
     url = await _try_ws_stream(entity_id)
     if url:
         _log(f"Resolved {entity_id} via WebSocket HLS stream")
-        return url
+        return {"url": url, "method": "hls_websocket", "has_audio": False}
 
     _log(f"All resolution methods failed for {entity_id}")
     return None
