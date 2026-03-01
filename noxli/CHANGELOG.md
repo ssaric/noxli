@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.3 (2026-03-01)
+
+- fix: mask RTSP credentials and dim irrelevant debug classifications
+
+
 ## 0.6.2 (2026-03-01)
 
 - fix: mask RTSP credentials in all API responses to the browser
