@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 (2026-03-01)
+
+- feat: add event actions, sleep-end modal, and move sources to modal
+
+
 ## 0.6.3 (2026-03-01)
 
 - fix: mask RTSP credentials and dim irrelevant debug classifications
