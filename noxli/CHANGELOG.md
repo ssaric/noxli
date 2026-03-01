@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1 (2026-03-01)
+
+- fix: pin numpy<2 for tflite-runtime compatibility
+
+
 ## 0.6.0 (2026-03-01)
 
 - feat: add companion HA integration for camera RTSP URL resolution
