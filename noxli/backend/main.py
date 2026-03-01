@@ -6,6 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 from typing import List, Optional
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -14,6 +15,22 @@ from pydantic import BaseModel
 from . import audio_stream, db, ha
 
 from contextlib import asynccontextmanager
+
+
+def _mask_url(url: str) -> str:
+    """Strip credentials from a URL before sending to the frontend."""
+    if not url or "://" not in url:
+        return url
+    try:
+        parsed = urlparse(url)
+        if not parsed.username:
+            return url
+        # Replace user:pass with ***
+        masked = parsed._replace(netloc=f"***@{parsed.hostname}"
+                                 + (f":{parsed.port}" if parsed.port else ""))
+        return urlunparse(masked)
+    except Exception:
+        return url
 
 
 _resolved_url_cache: dict = {"url": "", "time": 0.0}
@@ -139,7 +156,7 @@ async def resolve_stream_source(entity_id: str):
 
     return {
         "entity_id": entity_id,
-        "rtsp_url": result["url"],
+        "rtsp_url": _mask_url(result["url"]),
         "method": result["method"],
         "has_audio": result["has_audio"],
     }
@@ -147,7 +164,9 @@ async def resolve_stream_source(entity_id: str):
 
 @app.get("/api/config")
 async def get_config():
-    return JSONResponse(_read_config())
+    config = _read_config()
+    config["rtsp_url"] = _mask_url(config.get("rtsp_url", ""))
+    return JSONResponse(config)
 
 
 class ConfigUpdate(BaseModel):
@@ -182,7 +201,7 @@ async def start_detection():
         audio_stream.loop.start(rtsp_url, sensitivity)
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
-    return {"status": "started", "rtsp_url": rtsp_url, "sensitivity": sensitivity}
+    return {"status": "started", "rtsp_url": _mask_url(rtsp_url), "sensitivity": sensitivity}
 
 
 @app.post("/api/detection/stop")
@@ -196,7 +215,7 @@ async def detection_status():
     s = audio_stream.loop.stats
     return {
         "running": s.running,
-        "rtsp_url": s.rtsp_url,
+        "rtsp_url": _mask_url(s.rtsp_url),
         "events_detected": s.events_detected,
         "last_event_time": s.last_event_time,
         "chunks_processed": s.chunks_processed,
@@ -213,7 +232,7 @@ async def detection_debug():
     chunks = audio_stream.loop.debug_chunks
     return {
         "running": s.running,
-        "rtsp_url": s.rtsp_url,
+        "rtsp_url": _mask_url(s.rtsp_url),
         "chunks_processed": s.chunks_processed,
         "error": s.error,
         "ffmpeg_error": s.ffmpeg_error,
